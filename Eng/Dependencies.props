@@ -1,0 +1,8 @@
+<Project>
+    <ItemGroup>
+        <NewtonsoftJsonPackageVersion>11.0.1</NewtonsoftJsonPackageVersion>
+        <MicrosoftAspNetCoreSignalRClientPackageVersion>5.0.5</MicrosoftAspNetCoreSignalRClientPackageVersion> 
+        <MicrosoftAzureSignalRPackageVersion>1.8.0</MicrosoftAzureSignalRPackageVersion>
+        <MicrosoftAspNetCoreStaticFilesPackageVersion>2.2.0</MicrosoftAspNetCoreStaticFilesPackageVersion>
+    </ItemGroup>
+</Project>
