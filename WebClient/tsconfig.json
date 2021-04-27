@@ -1,0 +1,27 @@
+﻿//{
+//  "compilerOptions": {
+//    "noImplicitAny": false,
+//    "noEmitOnError": true,
+//    "removeComments": false,
+//    "sourceMap": true,
+//    "target": "es5",
+//    "module": "commonjs",
+//    "outDir": "wwwroot/js"
+//  },
+//  "include": [
+//    "typescripts/**/*"
+//  ]
+//}
+
+
+{
+  "compilerOptions": {
+    //"outDir": "./dist/",
+    "noImplicitAny": true,
+    "sourceMap": true,
+    "module": "es6",
+    "target": "es5",
+    "allowJs": true,
+    "moduleResolution": "node"
+  }
+}

@@ -24,6 +24,7 @@ namespace WebClient
         public void ConfigureServices(IServiceCollection services)
         {
             services.AddRazorPages();
+            services.AddSignalR();
         }
 
         // This method gets called by the runtime. Use this method to configure the HTTP request pipeline.
@@ -41,11 +42,14 @@ namespace WebClient
             }
 
             app.UseHttpsRedirection();
+
+            app.UseDefaultFiles();
             app.UseStaticFiles();
 
             app.UseRouting();
 
             app.UseAuthorization();
+
 
             app.UseEndpoints(endpoints =>
             {

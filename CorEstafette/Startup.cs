@@ -26,6 +26,7 @@ namespace CorEstafette
         public void ConfigureServices(IServiceCollection services)
         {
             services.AddRazorPages();
+            services.AddCors();
             services.AddSignalR();//configure signalR hubs
         }
 
@@ -45,6 +46,14 @@ namespace CorEstafette
 
             app.UseHttpsRedirection();
             app.UseStaticFiles();
+
+            app.UseCors(builder =>
+            {
+                builder.WithOrigins("https://localhost:5003")
+                    .AllowAnyHeader()
+                    .WithMethods("GET", "POST")
+                    .AllowCredentials();
+            });
 
             app.UseRouting();
 
