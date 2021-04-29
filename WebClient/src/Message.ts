@@ -1,10 +1,10 @@
 ﻿import { IMessage } from "./IMessage";
 
 export class Message implements IMessage {
-    correlationId: string;
-    content: string;
-    sender: string;
-    topic: string;
+    private correlationId: string;
+    private content: string;
+    private sender: string;
+    private topic: string;
 
     constructor(id: string, content: string, sender: string, topic: string) {
         this.correlationId = id;
@@ -13,4 +13,19 @@ export class Message implements IMessage {
         this.topic = topic;
     }
 
+    get Topic() {
+        return this.topic;
+    }
+
+    get CorrelationId() {
+        return this.correlationId;
+    }
+
+    get Sender() {
+        return this.sender;
+    }
+
+    get Content() {
+        return this.content;
+    }
 }

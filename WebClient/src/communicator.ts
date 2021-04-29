@@ -66,7 +66,7 @@ export class Communicator implements ICommunicator {
             console.log(this.callbacksByTopics);//test
             const messageReceived: IMessage = <IMessage>objectReceived;
 
-            let topicCallback = this.callbacksByTopics.get(messageReceived.topic);
+            let topicCallback = this.callbacksByTopics.get(messageReceived.Topic);
             topicCallback(messageReceived.topic, messageReceived.content);//invoke callback
             //TODO: does callback have more parameters
         });
