@@ -21,26 +21,34 @@ namespace CorEstafette.Hubs
             return res;
         }
 
-        public IResponse VerifyUserRegistered(string userName)
+        public IResponse AddResponder(string userName)
         {
-            bool success = ConnectedClients.ContainsKey(userName);
+            bool success = VerifyResponderConnectivity(userName);
             if (success)
             {
                 success = RespondersList.TryAdd(userName, Context.ConnectionId);
-                return new Response(null, $"{userName} was {(success ? "successfully added to" : "already in")} the Responser's list", success);
+                return new Response(null, $"{userName} was {(success ? "successfully added to" : "already in")} the Responser's list", true);
             }
-            RespondersList.TryRemove(userName, out var _);
+            
             return new Response(null, $"{userName} is not registered on the service.", success);
         }
 
-        public IResponse VerifyUserInResponserList(string userName)
+        private bool VerifyResponderConnectivity(string userName)
+        {
+            if (ConnectedClients.ContainsKey(userName))
+                return true;
+            RespondersList.TryRemove(userName, out var _);
+            return false;
+        }
+
+        public IResponse VerifyResponderIsInList(string userName)
         {
             bool success = RespondersList.ContainsKey(userName);
             // Check if still connected
             if (success)
-                return VerifyUserRegistered(userName);
+                success = VerifyResponderConnectivity(userName);
 
-            return new Response(null, $"{userName} is not in the responder's list.", success);
+            return new Response(null, $"{userName} is {(success ? "" : "not" )} in the responder's list.", success);
         }
         //publish message to a particular topic
         public async Task PublishAsync(Message message)

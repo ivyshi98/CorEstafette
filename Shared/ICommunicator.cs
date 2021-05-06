@@ -35,7 +35,7 @@ namespace SignalRCommunicator
         /// <param name="responder"></param>
         /// <param name="callBack"></param>
         /// <returns></returns>
-        Task<IResponse> AddResponder(string responder, Func<IRequest, Object> callBack);
+        Task<IResponse> AddResponder(string responder, Func<IRequest, Task<Object>> callBack);
 
         Task<IResponse> QueryAsync(string responder, string additionalData);
     }
