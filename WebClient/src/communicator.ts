@@ -85,8 +85,7 @@ export class Communicator implements ICommunicator {
             console.log(requestReceived);
             console.log(this.callbacksByResponder);
 
-            let respondCallback = this.callbacksByResponder.get(requestReceived.Destination);
-            //let respondCallback = this.callbacksByResponder.get("user");
+            let respondCallback = this.callbacksByResponder.get(requestReceived.Responder);
             let result = respondCallback(requestReceived);
             console.log(result);
 

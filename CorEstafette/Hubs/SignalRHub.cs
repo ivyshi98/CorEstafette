@@ -21,7 +21,7 @@ namespace CorEstafette.Hubs
         public string Sender { get; set; }
         public string Topic { get; set; }
         public DateTime TimeStamp { get; set; }
-        public string Destination { get; set; }
+        public string Responder { get; set; }
     }
 
 
@@ -94,7 +94,7 @@ namespace CorEstafette.Hubs
         {
             responsesByCorrelationIds[request.CorrelationId] = new TaskCompletionSource<IResponse>();
 
-            await Clients.Client(ConnectedClients[request.Destination]).SendAsync("OnQuery", request);
+            await Clients.Client(ConnectedClients[request.Responder]).SendAsync("OnQuery", request);
             var responseTask = responsesByCorrelationIds[request.CorrelationId].Task;
             var timeoutTask = Task.Delay(2000);
             var result = await Task.WhenAny(responseTask, timeoutTask);
