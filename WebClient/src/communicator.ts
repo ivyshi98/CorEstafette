@@ -12,10 +12,9 @@ import { Request } from "./Request";
 
 export class Communicator implements ICommunicator {
 
-  
+    private userId: string;
     private connection: any;
     private callbacksByTopics: Map<string, (message: IMessage) => any>;
-    private userId: string;
     private callbacksByResponder: Map<string, (request: IRequest) => any>;
 
     //construct and return a timeout promise which will reject after 2 seconds
@@ -38,33 +37,38 @@ export class Communicator implements ICommunicator {
 
         this.connection.start().then(
 
-            (resolve: any) => {
+            (connect: any) => {
+
                 let registerTask = this.connection.invoke("ConnectAsync", this.userId);
                 let timeoutTask = this.timeoutAsync();
-                return Promise.race([registerTask, timeoutTask]);
+                return Promise.race([registerTask, timeoutTask]);//return a promise to be handled by the next then
             },
-            (reject: any): void => {
-                throw new Response("", "connection rejected", "", "", false);
+            (rejectConnect: any): void => {
+
+                let correlationID = Guid.create().toString();
+                throw new Response(correlationID, "failed to connect to the service", "", "", false);
 
         }).then(
 
-            (resolve: IResponse): void => {
-                console.log(resolve);
-                if (resolve.Success === true) {
-                    connectionHandler(resolve);
-                    console.log("successfully registered");//TODO: notify user?
-                } else {//duplicate user name, need to stop connection and throw
-                    this.connection.stop();
-                    throw resolve;
+            (register: IResponse): void => {
+
+                if (register.Success === true) {
+                    connectionHandler(register);//invoke handler to notify the client
+                } else {//duplicate user name, need to stop connection and throw the response
+                    this.connection.stop();//TODO: this is also an async method; handle this here will cause callback hell?
+                    throw register;
                 }
             },
-            (reject: any): void => {//reject could be either response or string
-                throw new Response("", "failed to register the connection", "", "", false);
+            (rejectRegister: any): void => {//reject could be either response or string
+
+                let correlationID = Guid.create().toString();
+                throw new Response(correlationID, "failed to register the connection", "", "", false);
+
         });
     }
 
     constructor(user: string, connectCallback: (response: IResponse)=> any) {
-        this.establishConnection("https://localhost:5001/signalRhub", connectCallback);
+        this.establishConnection("https://localhost:5001/signalRhub", connectCallback);//TODO: change this url later
 
         this.callbacksByTopics = new Map();
         this.callbacksByResponder = new Map();
@@ -73,7 +77,6 @@ export class Communicator implements ICommunicator {
         //this.userId = "User" + Math.floor(Math.random() * (100 - 1 + 1)) + 1;
 
         this.userId = user;
-        console.log(this.userId);
 
         //invoke the proper callback when the hub sends topic-based message to the client
         this.registerCallback("onPublish", (messageReceived: IMessage) => {
