@@ -1,72 +1,47 @@
-﻿ using Microsoft.AspNetCore.SignalR;
-using System.Threading;
+﻿using Microsoft.AspNetCore.SignalR;
 using System.Threading.Tasks;
 using SignalRCommunicator;
-using System.Collections.Generic;
 using System;
-using System.Diagnostics;
 using System.Collections.Concurrent;
-
 
 //Hub manages connection, group, messaging
 namespace CorEstafette.Hubs
 {
-
-    public class Request
-    {
-
-
-        public string CorrelationId { get; set; }
-        public string Content { get; set; }
-        public string Sender { get; set; }
-        public string Topic { get; set; }
-        public DateTime TimeStamp { get; set; }
-        public string Destination { get; set; }
-    }
-
-
-
     public class SignalRHub : Hub
     {
-
-        static private ConcurrentDictionary<string, string> ConnectedClients = new ConcurrentDictionary<string, string>();
-    
+        private static ConcurrentDictionary<string, string> ConnectedClients = new ConcurrentDictionary<string, string>();
         private static ConcurrentDictionary<string, TaskCompletionSource<IResponse>> responsesByCorrelationIds = new ConcurrentDictionary<string, TaskCompletionSource<IResponse>>();
+        private static ConcurrentDictionary<string, string> RespondersList = new ConcurrentDictionary<string, string>();
 
-        //public override Task OnConnectedAsync()
-        //{
-        //    System.Threading.Thread.Sleep(4000);//test timeout
-        //    return base.OnConnectedAsync();
-        //}
 
-        //cache the connection's name and id; return a success response if the connection is valid;
-        // return a failure response if the connection's name is already in used
         public async Task<IResponse> ConnectAsync(string userName)
         {
             bool success = ConnectedClients.TryAdd(userName, Context.ConnectionId);
-            foreach (var kvp in ConnectedClients) { Debug.WriteLine(kvp.Key + " " + kvp.Value); } //test
-            IResponse res = new Response("", userName +  " is connected to the service", true);
+            IResponse res = new Response("", $"{userName} {(success ? "successfully registered" : "failed to register")} to the service", success);
             return res;
         }
 
-        //remove the connection from the cache
-        public override Task OnDisconnectedAsync(Exception exception)
+        public IResponse VerifyUserRegistered(string userName)
         {
-            //var connName = Context.GetHttpContext().Request.Query["name"];
-            foreach (var kvp in ConnectedClients)
+            bool success = ConnectedClients.ContainsKey(userName);
+            if (success)
             {
-                if (kvp.Value == Context.ConnectionId)
-                {
-                    string userName = kvp.Key;
-                    ConnectedClients.TryRemove(userName, out string connectId);
-                }
+                success = RespondersList.TryAdd(userName, Context.ConnectionId);
+                return new Response(null, $"{userName} was {(success ? "successfully added to" : "already in")} the Responser's list", success);
             }
-            //test
-            Debug.WriteLine("print dict in onDisconnectedAsync");
-            foreach (var kvp in ConnectedClients) {Debug.WriteLine(kvp.Key + " " + kvp.Value);}
-            return base.OnDisconnectedAsync(exception);
+            RespondersList.TryRemove(userName, out var _);
+            return new Response(null, $"{userName} is not registered on the service.", success);
         }
 
+        public IResponse VerifyUserInResponserList(string userName)
+        {
+            bool success = RespondersList.ContainsKey(userName);
+            // Check if still connected
+            if (success)
+                return VerifyUserRegistered(userName);
+
+            return new Response(null, $"{userName} is not in the responder's list.", success);
+        }
         //publish message to a particular topic
         public async Task PublishAsync(Message message)
         {
@@ -77,7 +52,7 @@ namespace CorEstafette.Hubs
         public async Task<IResponse> SubscribeTopicAsync(Message message)
         {
             await Groups.AddToGroupAsync(Context.ConnectionId, message.Topic);
-            
+
             message.Content = $"{message.Sender} successfully subscribed to topic {message.Topic}";
             return new Response(message, true);
         }
@@ -94,7 +69,7 @@ namespace CorEstafette.Hubs
         {
             responsesByCorrelationIds[request.CorrelationId] = new TaskCompletionSource<IResponse>();
 
-            await Clients.Client(ConnectedClients[request.Destination]).SendAsync("OnQuery", request);
+            await Clients.Client(ConnectedClients[request.Responder]).SendAsync("OnQuery", request);
             var responseTask = responsesByCorrelationIds[request.CorrelationId].Task;
             var timeoutTask = Task.Delay(2000);
             var result = await Task.WhenAny(responseTask, timeoutTask);
@@ -104,15 +79,26 @@ namespace CorEstafette.Hubs
                 responsesByCorrelationIds.TryRemove(request.CorrelationId, out var tcs);
                 return tcs.Task.Result;
             }
-            return new Response(false, request.CorrelationId, null, "Query failed after 2 second time out", request.Sender, DateTime.Now); 
+            return new Response(false, request.CorrelationId, null, "Query failed after 2 second time out", request.Sender, DateTime.Now);
         }
-
 
         public void RespondQueryAsync(Response response)
         {
-
             responsesByCorrelationIds[response.CorrelationId].TrySetResult(response);
-         }
-         
+        }
+
+        public override Task OnDisconnectedAsync(System.Exception exception)
+        {
+            string userName = "";
+            foreach (var pair in ConnectedClients)
+            {
+                if (pair.Value == Context.ConnectionId)
+                    userName = pair.Key;
+            }
+
+            ConnectedClients.TryRemove(userName, out _);
+            return base.OnDisconnectedAsync(exception);
+        }
     }
+
 }

@@ -89,9 +89,24 @@ namespace SignalRCommunicator
             await connection.InvokeAsync("PublishAsync", message);
         }
 
-        public bool AddResponder(string responder, Func<IRequest, Object> callBack)
+        public async Task<IResponse> AddResponder(string responder, Func<IRequest, Object> callBack)
         {
-            return callBackByResponder.TryAdd(responder, callBack);
+            Response response = await connection.InvokeAsync<Response>("VerifyUserRegistered", responder);
+            if (!response.Success)
+            {
+                callBackByResponder.Remove(responder);
+                return response;
+            }
+            bool success = callBackByResponder.TryAdd(responder, callBack);
+            return new Response(null, $"{responder} {(success ? "has been successfully added as" : "is already")} a responder.", success);
+        }
+
+        public async Task<IResponse> QueryAsync(string responder, string additionalData)
+        {
+            IRequest request = new Request(responder, additionalData, UserId);
+            IResponse response = await connection.InvokeAsync<Response>("QueryAsync", request);
+            return response;
+            //return callBackByResponder.TryAdd(responder, callBack);
         }
     }
 }

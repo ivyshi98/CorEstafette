@@ -5,33 +5,45 @@
         xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
         xmlns:local="clr-namespace:WPFClient"
         mc:Ignorable="d"
-        Title="CorEstafette -- Client WPF" Width="600">
+        Title="CorEstafette -- Client WPF" Width="600" Height="561">
     <Grid Background="Cornsilk">
-        
+
         <StackPanel Grid.ColumnSpan="2">
-            <GroupBox Header="Publishing :" Margin="5,5,5,0">
+            <GroupBox Header="Topic Base Messages" Margin="5,5,5,0">
                 <StackPanel Margin="5,5,5,5">
                     <StackPanel Orientation="Horizontal">
-                        <Label Content="Topic: " Width="60" />
-                        <TextBox x:Name="TopicText" Text="{Binding Topic}" Margin="5,5,5,0" Width="490" Height="17.96"/>
+                        <Label Content="User: " Width="75" />
+                        <TextBlock x:Name="Username" Text="{Binding Path=Username, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" Margin="5,5,5,0" Width="490" Height="17.96"/>
                     </StackPanel>
                     <StackPanel Orientation="Horizontal">
-                        <Label Content="Message: " Width="60" />
-                        <TextBox x:Name="ContentText" Text="{Binding Content}" Margin="5,5,5,0" Width="490" Height="17.96"/>
+                        <Label Content="Topic: " Width="100" />
+                        <TextBox x:Name="TopicText" Text="{Binding Topic}" Margin="5,5,5,0" Width="460" Height="17.96"/>
                     </StackPanel>
-                    <Button Content="Publish Message" Command="{Binding PublishMessage}" Margin="0,5,0,0" HorizontalAlignment="Center"/>
+                    <StackPanel Orientation="Horizontal">
+                        <Label Content="Message: " Width="100" />
+                        <TextBox x:Name="ContentText" Text="{Binding Content}" Margin="5,5,5,0" Width="460" Height="17.96"/>
+                    </StackPanel>
+                    <StackPanel Orientation="Horizontal">
+                        <Button Content="Subscribe" Command="{Binding SubscribeCommand}" HorizontalAlignment="Center" Margin="105,5,0,0" Width="95"/>
+                        <Button Content="Unsubscribe" Command="{Binding UnsubscribeCommand}" HorizontalAlignment="Center" Margin="87,5,0,0" Width="95"/>
+                        <Button Content="Publish Message" Command="{Binding PublishMessage}" Margin="88,5,0,0" HorizontalAlignment="Center" Width="95"/>
+                    </StackPanel>
                 </StackPanel>
             </GroupBox>
-            <GroupBox Header="Subscribe to:" Margin="5,5,5,0">
+            <GroupBox Header="Request Base Messages" Margin="5,5,5,0">
                 <StackPanel Margin="5,5,5,5">
-                    <TextBox x:Name="SubscribeText" Text="{Binding SubscribeTopic}" Margin="5,5,5,0" />
-                    <Button Content="Subscribe" Command="{Binding SubscribeCommand}" HorizontalAlignment="Center" Margin="0,5,0,0"/>
-                </StackPanel>
-            </GroupBox>
-            <GroupBox Header="Unsubscribe to:" Margin="5,5,5,0">
-                <StackPanel Margin="5,5,5,5">
-                    <TextBox x:Name="UnsubscribeText" Text="{Binding UnsubscribeTopic}" Margin="5,5,5,0" />
-                    <Button Content="Unsubscribe" Command="{Binding UnsubscribeCommand}" HorizontalAlignment="Center" Margin="0,5,0,0"/>
+                    <StackPanel Orientation="Horizontal">
+                        <Label Content="Responder: " Width="100" />
+                        <TextBox x:Name="ResponderText" Text="{Binding Responder}" Margin="5,5,5,0" Width="460" Height="17.96"/>
+                    </StackPanel>
+                    <StackPanel Orientation="Horizontal">
+                        <Label Content="Additional Data: " Width="100" />
+                        <TextBox x:Name="AdditionalDataText" Text="{Binding AdditionalData}" Margin="5,5,5,0" Width="460" Height="17.96"/>
+                    </StackPanel>
+                    <StackPanel Orientation="Horizontal">
+                        <Button Content="Add Responder" Command="{Binding AddResponderCommand}" HorizontalAlignment="Center" Margin="105,5,0,0" Width="95"/>
+                        <Button Content="Send Request" Command="{Binding SendRequestCommand}" HorizontalAlignment="Center" Margin="270,5,0,0" Width="95"/>
+                    </StackPanel>
                 </StackPanel>
             </GroupBox>
             <GroupBox Header="Messages:" Margin="5,5,5,0" Height="150">
