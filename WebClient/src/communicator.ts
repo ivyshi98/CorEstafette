@@ -200,12 +200,17 @@ export class Communicator implements ICommunicator {
     }
 
 
-     //bool AddResponse(string responder, Func<IRequest, object> callback);
-    addResponder(responder : string, respondCallback: (request: IRequest) => string) {
+    //bool AddResponse(string responder, Func<IRequest, object> callback);
+
+    async addResponder(responder: string, respondCallback: (request: IRequest) => Promise<Object>): Promise<IResponse> {
         if (!this.callbacksByResponder.has(responder)) {
             this.callbacksByResponder.set(responder, respondCallback);
             console.log(this.callbacksByResponder);
         }
+        let registerTask = this.connection.invoke("VerifyRegistration", responder);
+        let timeoutTask = this.timeoutAsync();
+        return Promise.race([registerTask, timeoutTask]);
+        //return new Response();
     }
 
     async disconnectAsync(): Promise<IResponse> {

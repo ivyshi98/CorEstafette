@@ -26,18 +26,24 @@ let onReceive = function (message: IMessage) {
     document.getElementById("messagesList").appendChild(li);
 }
 
-let onRequest = function (request: IRequest): string {
+let onRequest = function (request: IRequest): Promise<Object> {
     let encodedMsg = "<div>Received a request message from <div class='message'>" + request.Sender+"</div></div>";
     let li = document.createElement("li");
     li.innerHTML = encodedMsg;
     document.getElementById("messagesList").appendChild(li);
-    return "echo back";
+    //return "echo back";
+    return new Promise<Object>((resolve, reject) => {
+        var requestContent: string = "echo back";
+        setTimeout(() => {
+            resolve(requestContent);
+        }, 2000);
+    });
 }
 
 document.getElementById("connectButton").addEventListener("click", function () {
     let user = (<HTMLInputElement>document.getElementById("userName")).value;
     comm = new Communicator(user, onConnect);
-    comm.addResponder(user, onRequest);
+    let result = comm.addResponder(user, onRequest);
 });
 
 //Add user callback to responder map
