@@ -6,7 +6,7 @@ import { ICommunicator } from "./ICommunicator";
 
 let comm: ICommunicator;
 
-
+//callback for receiving connection feedback
 let onConnect = function (response: IResponse) {
     console.log(onConnect);
     let msg = response.Content.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
@@ -48,24 +48,21 @@ document.getElementById("connectButton").addEventListener("click", function () {
 });
 
 
-
 document.getElementById("subButton").addEventListener("click", function () {
     let topic = (<HTMLInputElement>document.getElementById("subTopic")).value;
     let user = (<HTMLInputElement>document.getElementById("userName")).value;
     //TODO:see comment in line 44,45
     comm.addResponder(user, onRequest);
     let result = comm.subscribeAsync(topic, onReceive);
-    result.then((res: any) => {
-        //test
-        //const messageReceived: IResponse = <IResponse>res;
-        //console.log(messageReceived);
+    result.then((res: IResponse) => {
+        console.log(res);
         let li = document.createElement("li");
         li.innerHTML = "<div>Subscribed to <div class='message'>" + topic + "</div></div>";
         document.getElementById("messagesList").appendChild(li);
-    }).catch((err: any) => {
+    }).catch((err: IResponse) => {
         console.log(err);
         let li = document.createElement("li");
-        li.textContent = "Failed to subscribe";
+        li.innerHTML = "<div>Failed to subscribe with error: <div class='message'>" + err.Content + "</div></div>";
         document.getElementById("messagesList").appendChild(li);
     });
 });
@@ -74,26 +71,24 @@ document.getElementById("publishButton").addEventListener("click", function () {
     let topic = (<HTMLInputElement>document.getElementById("publishTopic")).value;
     let message = (<HTMLInputElement>document.getElementById("publishMessage")).value;
     comm.publish(topic, message);
-
+    let li = document.createElement("li");
+    li.innerHTML = "<div>Published to topic: <div class='message'>" + topic + "</div></div>";
+    document.getElementById("messagesList").appendChild(li);
 });
 
 document.getElementById("unsubButton").addEventListener("click", function () {
     let topic = (<HTMLInputElement>document.getElementById("subTopic")).value;
     let result = comm.unsubscribeAsync(topic);
-    result.then((res : any) => {
-            //test
-            //const messageReceived: IResponse = <IResponse>res;
-            //console.log(messageReceived);
+    result.then((res : IResponse) => {
             let li = document.createElement("li");
-            li.innerHTML = "<div>Unsubscribed from <div class='message'>" + topic + "</div></div>";
+            li.innerHTML = "<div>Unsubscribed from <div class='message'>" + res.Topic + "</div></div>";
             document.getElementById("messagesList").appendChild(li);
-    }).catch((err: any) => {
+    }).catch((err: IResponse) => {
             console.log(err);
             let li = document.createElement("li");
-            li.textContent = "Failed to unsubscribe";
+            li.innerHTML = "<div>Failed to unsubscribe with error: <div class='message'>" + err.Content + "</div></div>";
             document.getElementById("messagesList").appendChild(li);
         });
-
 });
 
 document.getElementById("requestButton").addEventListener("click", function () {
@@ -102,30 +97,25 @@ document.getElementById("requestButton").addEventListener("click", function () {
     let result = comm.queryAsync(responder, additionalData);
 
     result.then((res: IResponse) => {
-        const messageReceived: IResponse = <IResponse>res;
-        console.log(messageReceived);
         let li = document.createElement("li");
-        li.innerHTML = "<div>Received <div class='message'>" + messageReceived.Content + "</div> from <div class='message'>" + responder + "</div></div>";
+        li.innerHTML = "<div>Received <div class='message'>" + res.Content + "</div> from <div class='message'>" + responder + "</div></div>";
         document.getElementById("messagesList").appendChild(li);
-    }).catch((err: any) => {
-        console.log(err);
+    }).catch((err: IResponse) => {
         let li = document.createElement("li");
-        li.innerHTML = "<div>Failed to request from <div class='message'>" + responder + "</div></div>";
+        li.innerHTML = "<div>Failed to request with error: <div class='message'>" + err.Content + "</div></div>";
         document.getElementById("messagesList").appendChild(li);
     });
-    
-
-})
+});
 
 document.getElementById("disconnectButton").addEventListener("click", function () {
     let result = comm.disconnectAsync();
-    result.then((res: any) => {
+    result.then((res: IResponse) => {
         let li = document.createElement("li");
         li.textContent = "disconnected from the service";
         document.getElementById("messagesList").appendChild(li);
-    }).catch((err: any) => {
+    }).catch((err: IResponse) => {
         let li = document.createElement("li");
-        li.textContent = "disconnection failed";
+        li.innerHTML = "<div>Failed to disconnect with error: <div class='message'>" + err.Content + "</div></div>";
         document.getElementById("messagesList").appendChild(li);
     });
 });
