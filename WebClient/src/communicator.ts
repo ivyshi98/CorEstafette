@@ -17,11 +17,18 @@ export class Communicator implements ICommunicator {
     private callbacksByTopics: Map<string, (message: IMessage) => any>;
     private callbacksByResponder: Map<string, (request: IRequest) => any>;
 
+    ////construct and return a timeout promise which will reject after 2 seconds
+    //private timeoutAsync(ms: number = 2000, correlationId : string = "", content : string = "timeout", sender : string = "", topic : string = "") : Promise<IResponse> {
+    //    let timeoutResponse = new Response(correlationId, content, sender, topic, false);
+    //    return new Promise((resolve, reject) => setTimeout(() => {
+    //        reject(timeoutResponse)
+    //    }, ms));
+    //}
+
     //construct and return a timeout promise which will reject after 2 seconds
-    private timeoutAsync(ms: number = 2000, correlationId : string = "", content : string = "timeout", sender : string = "", topic : string = "") : Promise<IResponse> {
-        let timeoutResponse = new Response(correlationId, content, sender, topic, false);
+    private timeoutAsync(ms: number = 2000) : Promise<string> {
         return new Promise((resolve, reject) => setTimeout(() => {
-            reject(timeoutResponse)
+            reject("timeout");
         }, ms));
     }
 
@@ -35,35 +42,30 @@ export class Communicator implements ICommunicator {
 
         this.connection = new signalR.HubConnectionBuilder().withUrl(url).build();
 
-        this.connection.start().then(
+        let connectionResult = this.connection.start().then(
 
-            (connect: any) => {
+            (connect: any) => {//connected
 
                 let registerTask = this.connection.invoke("ConnectAsync", this.userId);
                 let timeoutTask = this.timeoutAsync();
                 return Promise.race([registerTask, timeoutTask]);//return a promise to be handled by the next then
-            },
-            (rejectConnect: any): void => {
+            }
 
-                let correlationID = Guid.create().toString();
-                throw new Response(correlationID, "failed to connect to the service", "", "", false);
+        ).then(
 
-        }).then(
-
-            (register: IResponse): void => {
+            (register: IResponse): void => {//registered
 
                 if (register.Success === true) {
                     connectionHandler(register);//invoke handler to notify the client
                 } else {//duplicate user name, need to stop connection and throw the response
-                    this.connection.stop();//TODO: this is also an async method; handle this here will cause callback hell?
-                    throw register;
+                    this.connection.stop();//TODO: this is also an async method; handle this here will cause another callback hell?
+                    connectionHandler(register);
                 }
-            },
-            (rejectRegister: any): void => {//reject could be either response or string
+            }
 
-                let correlationID = Guid.create().toString();
-                throw new Response(correlationID, "failed to register the connection", "", "", false);
-
+        ).catch ((err : any) => {
+            let correlationID = Guid.create().toString();
+            connectionHandler(new Response(correlationID, "failed to register the connection", "", "", false));
         });
     }
 
@@ -72,9 +74,6 @@ export class Communicator implements ICommunicator {
 
         this.callbacksByTopics = new Map();
         this.callbacksByResponder = new Map();
-
-        //generate unique user id
-        //this.userId = "User" + Math.floor(Math.random() * (100 - 1 + 1)) + 1;
 
         this.userId = user;
 
@@ -117,36 +116,42 @@ export class Communicator implements ICommunicator {
 
             let correlationID = Guid.create().toString();
             let duplicateSubResponse = new Response(correlationID, "cannot subscribe to the same topic multiple times", this.userId, topic, false);
-            return new Promise<IResponse>((resolve, reject) => {
-                reject(duplicateSubResponse);
-            });
+            throw duplicateSubResponse;
 
         } else {
 
             let correlationID = Guid.create().toString();
             let messageToSend = new Message(correlationID, "", this.userId, topic);
 
+            //set tasks
             let serviceTask = this.connection.invoke("SubscribeTopicAsync", messageToSend);
             let timeoutTask = this.timeoutAsync();
 
-            //wait for one of the tasks to settle
-            let taskResult = await Promise.race([serviceTask, timeoutTask]);
-            //TODO: handle reject later
+            //wait for one of the tasks to settle, and handle resolved and rejected cases separately
+            let taskResult = await Promise.race([serviceTask, timeoutTask]).then((res) => { return res; },
+                (rej: any) => {
+                    if (rej === "timeout") {
+                        return new Response(correlationID, "timeout on subscription", this.userId, topic, false);
+                    } else {
+                        return new Response(correlationID, "service rejected the request", this.userId, topic, false);
+                    }
+            });
+
             if (taskResult.Success === true) {
+
                 //add callback function to the dictionary
-                console.log("sub success");//test
+                console.log("sub success");
                 this.callbacksByTopics.set(topic, topicCallback);
                 console.log(this.callbacksByTopics);//test
+                return taskResult; //auto wrapped in a resolved promise
+
+            } else {
+
+                console.log("sub failed");
+                throw taskResult;//auto wrapped in a rejected promise
+
             }
-            //test
-            console.log("print the promise and response:");
-            console.log(serviceTask);
-            console.log(timeoutTask);
-            console.log(taskResult);
-
-            return taskResult;
         }
-
     }
 
     async unsubscribeAsync(topic: string): Promise<IResponse>{

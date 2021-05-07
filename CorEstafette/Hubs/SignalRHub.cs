@@ -16,7 +16,7 @@ namespace CorEstafette.Hubs
         public async Task<IResponse> ConnectAsync(string userName)
         {
             bool success = ConnectedClients.TryAdd(userName, Context.ConnectionId);
-            IResponse res = new Response("", $"{userName} {(success ? "successfully registered" : "failed to register")} to the service", success);
+            IResponse res = new Response("", $"{userName} {(success ? "successfully registered to the service" : "failed to register due to duplicate user name")}", success);
             return res;
         }
 
@@ -52,6 +52,7 @@ namespace CorEstafette.Hubs
         //method for client to subscribe for a topic
         public async Task<IResponse> SubscribeTopicAsync(Message message)
         {
+            System.Threading.Thread.Sleep(4000);
             await Groups.AddToGroupAsync(Context.ConnectionId, message.Topic);
 
             message.Content = $"{message.Sender} successfully subscribed to topic {message.Topic}";

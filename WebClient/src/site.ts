@@ -49,17 +49,15 @@ document.getElementById("connectButton").addEventListener("click", function () {
 document.getElementById("subButton").addEventListener("click", function () {
     let topic = (<HTMLInputElement>document.getElementById("subTopic")).value;
     let result = comm.subscribeAsync(topic, onReceive);
-    result.then((res: any) => {
-        //test
-        //const messageReceived: IResponse = <IResponse>res;
-        //console.log(messageReceived);
+    result.then((res: IResponse) => {
+        console.log(res);
         let li = document.createElement("li");
         li.innerHTML = "<div>Subscribed to <div class='message'>" + topic + "</div></div>";
         document.getElementById("messagesList").appendChild(li);
-    }).catch((err: any) => {
+    }).catch((err: IResponse) => {
         console.log(err);
         let li = document.createElement("li");
-        li.textContent = "Failed to subscribe";
+        li.innerHTML = "<div>Failed to subscribe with error: <div class='message'>" + err.Content + "</div></div>";
         document.getElementById("messagesList").appendChild(li);
     });
 });
