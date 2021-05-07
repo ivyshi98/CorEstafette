@@ -76,6 +76,7 @@ export class Communicator implements ICommunicator {
         console.log(this.userId);
 
         //invoke the proper callback when the hub sends topic-based message to the client
+
         this.registerCallback("onPublish", (messageReceived: IMessage) => {
             let topicCallback = this.callbacksByTopics.get(messageReceived.Topic);
             topicCallback(messageReceived);//invoke callback
@@ -83,20 +84,6 @@ export class Communicator implements ICommunicator {
         
         this.registerCallback("OnQuery", (requestReceived: IRequest) => {
             console.log("Onquery" + requestReceived);
-            //this.handleOnQuery(requestReceived);
-            //console.log(requestReceived);
-            //console.log(this.callbacksByResponder);
-
-            //let respondCallback = await this.callbacksByResponder.get(requestReceived.Responder);
-            //respondCallback.then((res: any) => { });
-
-            //let result = respondCallback(requestReceived);
-            //console.log(result);
-
-         
-            //let responseToSend = new Response(requestReceived.CorrelationId, result, requestReceived.Sender, "", true);
-            //console.log(responseToSend);
-            //this.connection.invoke("RespondQueryAsync", responseToSend);
 
             let respondCallback = this.callbacksByResponder.get(requestReceived.Responder);
             console.log(respondCallback);
@@ -108,20 +95,6 @@ export class Communicator implements ICommunicator {
                 this.connection.invoke("RespondQueryAsync", responseToSend);
             });
         })
-    }
-
-    async handleOnQuery(requestReceived: IRequest ) {
-         console.log(this.callbacksByResponder);
-
-        let respondCallback = this.callbacksByResponder.get(requestReceived.Responder);
-        console.log(respondCallback);
-        let result = respondCallback(requestReceived);
-        result.then((res: any) => {
-            console.log(res);
-            let responseToSend = new Response(requestReceived.CorrelationId, res, requestReceived.Sender, "", true);
-            console.log(responseToSend);
-            this.connection.invoke("RespondQueryAsync", responseToSend);
-        }); 
     }
 
     publish(topic: string, message: string) {
@@ -208,12 +181,9 @@ export class Communicator implements ICommunicator {
     }
   
     
-   async queryAsync(responder: string, additionalData: string) : Promise<IResponse> {
- 
-       //this.callbacksByResponder.set(responder, respondCallback);
-       // console.log("callbacksByResponder");
-       // console.log(this.callbacksByResponder);
+    async queryAsync(responder: string, additionalData: string): Promise<IResponse> {
 
+        //TODO: delete this after hub methods are updated
 
        let verifyResponder: IResponse = await this.connection.invoke("VerifyResponderIsInList", responder);
        console.log(verifyResponder.Success);
@@ -235,15 +205,10 @@ export class Communicator implements ICommunicator {
     }
 
 
-    //bool AddResponse(string responder, Func<IRequest, object> callback);
 
     async addResponder(responder: string, respondCallback: (request: IRequest) => Promise<any>): Promise<IResponse> {
         console.log("add responder");
-        //if (!this.callbacksByResponder.has(responder)) {
-        //    this.callbacksByResponder.set(responder, respondCallback);
-        //    console.log(this.callbacksByResponder);
-        //}
-
+    
         let registerTask: IResponse = await this.connection.invoke("AddResponder", responder);
         console.log("registration");
         console.log(registerTask);
@@ -255,9 +220,6 @@ export class Communicator implements ICommunicator {
                 console.log(this.callbacksByResponder);
             }
         }
-        //let timeoutTask = this.timeoutAsync();
-        //return Promise.race([registerTask, timeoutTask]);
-
         return registerTask;
     }
 
