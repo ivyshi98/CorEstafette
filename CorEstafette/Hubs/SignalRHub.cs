@@ -13,7 +13,6 @@ namespace CorEstafette.Hubs
         private static ConcurrentDictionary<string, TaskCompletionSource<IResponse>> responsesByCorrelationIds = new ConcurrentDictionary<string, TaskCompletionSource<IResponse>>();
         private static ConcurrentDictionary<string, string> RespondersList = new ConcurrentDictionary<string, string>();
 
-
         public async Task<IResponse> ConnectAsync(string userName)
         {
             bool success = ConnectedClients.TryAdd(userName, Context.ConnectionId);
@@ -33,6 +32,7 @@ namespace CorEstafette.Hubs
             return new Response(null, $"{userName} is not registered on the service.", success);
         }
 
+        
         public IResponse VerifyUserInResponserList(string userName)
         {
             bool success = RespondersList.ContainsKey(userName);
@@ -42,6 +42,7 @@ namespace CorEstafette.Hubs
 
             return new Response(null, $"{userName} is not in the responder's list.", success);
         }
+
         //publish message to a particular topic
         public async Task PublishAsync(Message message)
         {

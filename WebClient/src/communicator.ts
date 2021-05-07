@@ -88,7 +88,7 @@ export class Communicator implements ICommunicator {
             console.log(requestReceived);
             console.log(this.callbacksByResponder);
 
-            let respondCallback = this.callbacksByResponder.get(requestReceived.Destination);
+            let respondCallback = this.callbacksByResponder.get(requestReceived.Responder);
             //let respondCallback = this.callbacksByResponder.get("user");
             let result = respondCallback(requestReceived);
             console.log(result);
@@ -114,7 +114,9 @@ export class Communicator implements ICommunicator {
         console.log("Client called subscribe method");//test
 
         if (this.callbacksByTopics.has(topic)) {//cannot subscribe twice
-            let duplicateSubResponse = new Response("", "cannot subscribe to the same topic twice", this.userId, topic, false);
+
+            let correlationID = Guid.create().toString();
+            let duplicateSubResponse = new Response(correlationID, "cannot subscribe to the same topic multiple times", this.userId, topic, false);
             return new Promise<IResponse>((resolve, reject) => {
                 reject(duplicateSubResponse);
             });
@@ -129,6 +131,7 @@ export class Communicator implements ICommunicator {
 
             //wait for one of the tasks to settle
             let taskResult = await Promise.race([serviceTask, timeoutTask]);
+            //TODO: handle reject later
             if (taskResult.Success === true) {
                 //add callback function to the dictionary
                 console.log("sub success");//test
@@ -151,22 +154,22 @@ export class Communicator implements ICommunicator {
 
         if (!this.callbacksByTopics.has(topic)) {
 
-            let duplicateUnsubResponse = new Response("", "you need to subscribe before unsubscribing", this.userId, topic, false);
+            let correlationID = Guid.create().toString();
+            let duplicateUnsubResponse = new Response(correlationID, "subscribe to before unsubscribing from this topic", this.userId, topic, false);
             return new Promise<IResponse>((resolve, reject) => {
                 reject(duplicateUnsubResponse);
             });
 
         } else {
-            let correlationID = Guid.create().toString();
 
+            let correlationID = Guid.create().toString();
             let messageToSend = new Message(correlationID, "", this.userId, topic);
             let serviceTask = this.connection.invoke("UnsubscribeTopicAsync", messageToSend);
-
             //set timeout
             let timeoutTask = this.timeoutAsync();
             //wait for one of the tasks to settle
             let taskResult = await Promise.race([serviceTask, timeoutTask]);
-            
+            //TODO: handle reject later
             if (taskResult.Success===true) {
                 console.log("unsub success");//test
                 //remove from dictionary
@@ -175,10 +178,10 @@ export class Communicator implements ICommunicator {
             }
 
             //test
-            console.log("print the promise and response:");
-            console.log(serviceTask);
-            console.log(timeoutTask);
-            console.log(taskResult);
+            //console.log("print the promise and response:");
+            //console.log(serviceTask);
+            //console.log(timeoutTask);
+            //console.log(taskResult);
 
             return taskResult;
         }
@@ -196,7 +199,7 @@ export class Communicator implements ICommunicator {
         console.log(requestToSend);
         //let serviceTask = this.connection.invoke("QueryAsync", requestToSend).catch(err => console.log(err));
         let serviceTask = this.connection.invoke("QueryAsync", requestToSend);
-       let timeoutTask = this.timeoutAsync();
+        let timeoutTask = this.timeoutAsync();
 
         let taskResult = await Promise.race([serviceTask, timeoutTask]);
         console.log(taskResult);
