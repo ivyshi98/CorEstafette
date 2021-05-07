@@ -52,7 +52,7 @@ namespace CorEstafette.Hubs
         //method for client to subscribe for a topic
         public async Task<IResponse> SubscribeTopicAsync(Message message)
         {
-            System.Threading.Thread.Sleep(4000);
+            //System.Threading.Thread.Sleep(4000);
             await Groups.AddToGroupAsync(Context.ConnectionId, message.Topic);
 
             message.Content = $"{message.Sender} successfully subscribed to topic {message.Topic}";
