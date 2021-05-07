@@ -26,13 +26,13 @@ let onReceive = function (message: IMessage) {
     document.getElementById("messagesList").appendChild(li);
 }
 
-let onRequest = function (request: IRequest): Promise<Object> {
+let onRequest = function (request: IRequest): Promise<any> {
     let encodedMsg = "<div>Received a request message from <div class='message'>" + request.Sender+"</div></div>";
     let li = document.createElement("li");
     li.innerHTML = encodedMsg;
     document.getElementById("messagesList").appendChild(li);
     //return "echo back";
-    return new Promise<Object>((resolve, reject) => {
+    return new Promise<any>((resolve, reject) => {
         var requestContent: string = "echo back";
         setTimeout(() => {
             resolve(requestContent);
@@ -40,10 +40,13 @@ let onRequest = function (request: IRequest): Promise<Object> {
     });
 }
 
+
+
 document.getElementById("connectButton").addEventListener("click", function () {
     let user = (<HTMLInputElement>document.getElementById("userName")).value;
     comm = new Communicator(user, onConnect);
-    let result = comm.addResponder(user, onRequest);
+    //comm.addResponder(user, onRequest);
+    
 });
 
 //Add user callback to responder map
@@ -54,6 +57,8 @@ document.getElementById("connectButton").addEventListener("click", function () {
 
 document.getElementById("subButton").addEventListener("click", function () {
     let topic = (<HTMLInputElement>document.getElementById("subTopic")).value;
+    let user = (<HTMLInputElement>document.getElementById("userName")).value;
+    comm.addResponder(user, onRequest);
     let result = comm.subscribeAsync(topic, onReceive);
     result.then((res: any) => {
         //test
