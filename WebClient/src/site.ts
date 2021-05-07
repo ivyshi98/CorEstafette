@@ -89,30 +89,23 @@ document.getElementById("unsubButton").addEventListener("click", function () {
             li.innerHTML = "<div>Failed to unsubscribe with error: <div class='message'>" + err.Content + "</div></div>";
             document.getElementById("messagesList").appendChild(li);
         });
-
 });
 
-//TODO: fix this like sub/unsub later
 document.getElementById("requestButton").addEventListener("click", function () {
     let additionalData = (<HTMLInputElement>document.getElementById("additionalData")).value;
     let responder = (<HTMLInputElement>document.getElementById("responder")).value;
     let result = comm.queryAsync(responder, additionalData);
 
     result.then((res: IResponse) => {
-        const messageReceived: IResponse = <IResponse>res;
-        console.log(messageReceived);
         let li = document.createElement("li");
-        li.innerHTML = "<div>Received <div class='message'>" + messageReceived.Content + "</div> from <div class='message'>" + responder + "</div></div>";
+        li.innerHTML = "<div>Received <div class='message'>" + res.Content + "</div> from <div class='message'>" + responder + "</div></div>";
         document.getElementById("messagesList").appendChild(li);
-    }).catch((err: any) => {
-        console.log(err);
+    }).catch((err: IResponse) => {
         let li = document.createElement("li");
-        li.innerHTML = "<div>Failed to request from <div class='message'>" + responder + "</div></div>";
+        li.innerHTML = "<div>Failed to request with error: <div class='message'>" + err.Content + "</div></div>";
         document.getElementById("messagesList").appendChild(li);
     });
-    
-
-})
+});
 
 document.getElementById("disconnectButton").addEventListener("click", function () {
     let result = comm.disconnectAsync();

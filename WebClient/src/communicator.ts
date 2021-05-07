@@ -100,16 +100,15 @@ export class Communicator implements ICommunicator {
     }
 
     publish(topic: string, message: string) {
-        console.log("Client called publish method");//test
+
         let correlationID = Guid.create().toString();
         let messageToSend = new Message(correlationID, message, this.userId, topic);
         console.log(messageToSend)
-        this.connection.invoke("PublishAsync", messageToSend);
+        this.connection.invoke("PublishAsync", messageToSend);//TODO: need a response if service is down
+
     }
 
-
     async subscribeAsync(topic: string, topicCallback: (message: IMessage) => any): Promise<IResponse>{
-        console.log("Client called subscribe method");//test
 
         if (this.callbacksByTopics.has(topic)) {//cannot subscribe twice
 
@@ -201,9 +200,6 @@ export class Communicator implements ICommunicator {
         }
     }
   
-
-   //TODO: change the response promise handler later like sub/unsub
-    
     async queryAsync(responder: string, additionalData: string): Promise<IResponse> {
 
         //TODO: delete this after hub methods are updated
@@ -211,17 +207,34 @@ export class Communicator implements ICommunicator {
        //let verifyResponder: IResponse = await this.connection.invoke("VerifyResponderIsInList", responder);
        //console.log(verifyResponder.Success);
        //if (verifyResponder.Success) {
-           let correlationID = Guid.create().toString();
-           let requestToSend = new Request(correlationID, additionalData, this.userId, null, responder);
-           console.log(requestToSend);
-           //let serviceTask = this.connection.invoke("QueryAsync", requestToSend).catch(err => console.log(err));
 
-           let serviceTask = this.connection.invoke("QueryAsync", requestToSend);
-           let timeoutTask = this.timeoutAsync();
+        let correlationID = Guid.create().toString();
+        let requestToSend = new Request(correlationID, additionalData, this.userId, null, responder);
+        console.log(requestToSend);
+        //let serviceTask = this.connection.invoke("QueryAsync", requestToSend).catch(err => console.log(err));
 
-           let taskResult = await Promise.race([serviceTask, timeoutTask]);
-           console.log(taskResult);
-           return taskResult;
+        let serviceTask = this.connection.invoke("QueryAsync", requestToSend);
+        let timeoutTask = this.timeoutAsync();
+
+        let taskResponse: IResponse = await Promise.race([serviceTask, timeoutTask]).then((res: IResponse) => { return res; },
+            (rej: any) => {
+                if (rej === "timeout") {
+                    return new Response(null, "timeout on query", this.userId, "", false);
+                } else {
+                    return new Response(null, "service rejected the query request", this.userId, "", false);
+                }
+            });
+
+        if (taskResponse.Success === true) {
+
+            return taskResponse; //auto wrapped in a resolved promise
+
+        } else {
+
+            throw taskResponse;//auto wrapped in a rejected promise
+
+        }
+
       // }
       //return verifyResponder;
     }
