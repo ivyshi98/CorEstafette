@@ -128,7 +128,7 @@ export class Communicator implements ICommunicator {
             let timeoutTask = this.timeoutAsync();
 
             //wait for one of the tasks to settle, and handle resolved and rejected cases separately
-            let taskResult : IResponse = await Promise.race([serviceTask, timeoutTask]).then((res : IResponse) => { return res; },
+            let taskResponse : IResponse = await Promise.race([serviceTask, timeoutTask]).then((res : IResponse) => { return res; },
                 (rej: any) => {
                     if (rej === "timeout") {
                         return new Response(correlationID, "timeout on subscription", this.userId, topic, false);
@@ -137,18 +137,18 @@ export class Communicator implements ICommunicator {
                     }
             });
 
-            if (taskResult.Success === true) {
+            if (taskResponse.Success === true) {
 
                 //add callback function to the dictionary
                 console.log("sub success");
                 this.callbacksByTopics.set(topic, topicCallback);
                 console.log(this.callbacksByTopics);//test
-                return taskResult; //auto wrapped in a resolved promise
+                return taskResponse; //auto wrapped in a resolved promise
 
             } else {
 
                 console.log("sub failed");
-                throw taskResult;//auto wrapped in a rejected promise
+                throw taskResponse;//auto wrapped in a rejected promise
 
             }
         }
@@ -174,7 +174,7 @@ export class Communicator implements ICommunicator {
             let timeoutTask = this.timeoutAsync();
 
             //wait for one of the tasks to settle, and handle resolved and rejected cases separately
-            let taskResult: IResponse = await Promise.race([serviceTask, timeoutTask]).then((res: IResponse) => { return res; },
+            let taskResponse: IResponse = await Promise.race([serviceTask, timeoutTask]).then((res: IResponse) => { return res; },
                 (rej: any) => {
                     if (rej === "timeout") {
                         return new Response(correlationID, "timeout on unsubscription", this.userId, topic, false);
@@ -183,7 +183,7 @@ export class Communicator implements ICommunicator {
                     }
                 });
 
-            if (taskResult.Success === true) {
+            if (taskResponse.Success === true) {
 
                 console.log("unsub success");//test
 
@@ -191,12 +191,12 @@ export class Communicator implements ICommunicator {
                 this.callbacksByTopics.delete(topic);
                 console.log(this.callbacksByTopics);//test
 
-                return taskResult; //auto wrapped in a resolved promise
+                return taskResponse; //auto wrapped in a resolved promise
 
             } else {
 
                 console.log("sub failed");
-                throw taskResult;//auto wrapped in a rejected promise
+                throw taskResponse;//auto wrapped in a rejected promise
 
             }
         }
@@ -235,11 +235,11 @@ export class Communicator implements ICommunicator {
         let serviceTask = this.connection.stop();
         let timeoutTask = this.timeoutAsync();
         //wait for one of the tasks to settle, and handle resolved and rejected cases separately
-        let taskResult: IResponse = await Promise.race([serviceTask, timeoutTask]).then(
+        let taskResponse: IResponse = await Promise.race([serviceTask, timeoutTask]).then(
             (res: void) => {
                 return new Response(null, "disconnected from service", this.userId, "", true);
             },
-            (rej: void) => {
+            (rej: any) => {
                 if (rej === "timeout") {
                     return new Response(null, "timeout on disconnection", this.userId, "", false);
                 } else {
@@ -247,13 +247,13 @@ export class Communicator implements ICommunicator {
                 }
             });
 
-        if (taskResult.Success === true) {
+        if (taskResponse.Success === true) {
 
-            return taskResult; //auto wrapped in a resolved promise
+            return taskResponse; //auto wrapped in a resolved promise
 
         } else {
 
-            throw taskResult;//auto wrapped in a rejected promise
+            throw taskResponse;//auto wrapped in a rejected promise
 
         }
     }
