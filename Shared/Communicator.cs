@@ -1,5 +1,6 @@
 ﻿using System;
 using System.Collections.Generic;
+using System.Diagnostics;
 using System.Threading.Tasks;
 using Microsoft.AspNetCore.SignalR.Client;
 
@@ -9,39 +10,48 @@ namespace SignalRCommunicator
     {
         private readonly HubConnection connection;
         private readonly Dictionary<string, Func<string, Task>> callBackTopics;
-        private readonly Dictionary<string, Func<IRequest, Object>> callBackByResponder;
+        private readonly Dictionary<string, Func<IRequest, Task<Object>>> callBackByResponder;
         private readonly string UserId;
         
         public Communicator()
         {
             callBackTopics = new Dictionary<string, Func<string, Task>>();
-            callBackByResponder = new Dictionary<string, Func<IRequest, object>>();
+            callBackByResponder = new Dictionary<string, Func<IRequest, Task<Object>>>();
             UserId = "User" + new Random().Next(1, 50);
             connection = new HubConnectionBuilder()
                 .WithUrl("https://localhost:44392/signalrhub")
                 .Build();
 
-            _ = Task.Run(async () => { await connection.StartAsync(); });
+            _ = Task.Run(async () => { 
+                await connection.StartAsync();
+                await connection.InvokeAsync<Response>("ConnectAsync", UserId);
+            });
             connection.Closed += async (error) =>
             {
                 await Task.Delay(new Random().Next(0, 5) * 1000);
                 await connection.StartAsync();
+                await connection.InvokeAsync<Response>("ConnectAsync", UserId);
             };
 
-            ConnectAsync();
- 
             connection.On<Message>(nameof(OnPublish), OnPublish);
+            connection.On<Request>(nameof(OnQuery), OnQuery);
         }
         private async Task OnPublish(Message message)
         {
             await callBackTopics[message.Topic]($"{message.Sender} published : {message.Content} on topic {message.Topic}");
         }
 
-        private async void ConnectAsync()
+        private async Task<Object> OnQuery(IRequest request)
         {
-            var response = await connection.InvokeAsync<Response>("ConnectAsync", UserId);
+            var tmp = await callBackByResponder[request.Responder](request);
+
+            IResponse response = new Response(true, request.CorrelationId, null, "Well Hello " + request.Sender, request.Sender, request.Timestamp);
+            var result = await connection.InvokeAsync<Response>("RespondQueryAsync", response);
+            //var tmp = callBackByResponder[request.Responder];
+            return null;
+
         }
-        
+
         public async Task<IResponse> SubscribeAsync(string topic, Func<string, Task> callBack)
         {
             if (callBackTopics.ContainsKey(topic))
@@ -89,22 +99,25 @@ namespace SignalRCommunicator
             await connection.InvokeAsync("PublishAsync", message);
         }
 
-        public async Task<IResponse> AddResponder(string responder, Func<IRequest, Object> callBack)
+        public async Task<IResponse> AddResponder(string responder, Func<IRequest, Task<Object>> callBack)
         {
-            Response response = await connection.InvokeAsync<Response>("VerifyUserRegistered", responder);
+            Response response = await connection.InvokeAsync<Response>("AddResponder", responder);
             if (!response.Success)
             {
                 callBackByResponder.Remove(responder);
                 return response;
             }
             bool success = callBackByResponder.TryAdd(responder, callBack);
-            return new Response(null, $"{responder} {(success ? "has been successfully added as" : "is already")} a responder.", success);
+            return response;
         }
 
         public async Task<IResponse> QueryAsync(string responder, string additionalData)
         {
             IRequest request = new Request(responder, additionalData, UserId);
-            IResponse response = await connection.InvokeAsync<Response>("QueryAsync", request);
+            IResponse response = await connection.InvokeAsync<Response>("VerifyResponderIsInList", responder);
+            if (!response.Success)
+                return response;
+            response = await connection.InvokeAsync<Response>("QueryAsync", request);
             return response;
             //return callBackByResponder.TryAdd(responder, callBack);
         }

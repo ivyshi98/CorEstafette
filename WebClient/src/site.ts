@@ -16,9 +16,7 @@ let onConnect = function (response: IResponse) {
     document.getElementById("messagesList").appendChild(li);
 }
 
-//callback for receiving messages
 let onReceive = function (message: IMessage) {
-    //console.log(message);
     let msg = message.Content.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
     let encodedMsg = "<div>Received message <div class='message'>" + msg + "</div> under topic <div class='message'>" + message.Topic + "</div></div>";
     let li = document.createElement("li");
@@ -26,23 +24,35 @@ let onReceive = function (message: IMessage) {
     document.getElementById("messagesList").appendChild(li);
 }
 
-let onRequest = function (request: IRequest): string {
+let onRequest = function (request: IRequest): Promise<any> {
     let encodedMsg = "<div>Received a request message from <div class='message'>" + request.Sender+"</div></div>";
     let li = document.createElement("li");
     li.innerHTML = encodedMsg;
     document.getElementById("messagesList").appendChild(li);
-    return "echo back";
+    return new Promise<any>((resolve, reject) => {
+        var requestContent: string = "echo back";
+        resolve(requestContent);
+ 
+    });
 }
+
 
 document.getElementById("connectButton").addEventListener("click", function () {
     let user = (<HTMLInputElement>document.getElementById("userName")).value;
     comm = new Communicator(user, onConnect);
-    comm.addResponder(user, onRequest);
+
+    //TODO:Need to wait until connection is on to addResponder
+    //Right now calling ti in subscribe for a temp workaround
+    //comm.addResponder(user, onRequest);
+
 });
 
 
 document.getElementById("subButton").addEventListener("click", function () {
     let topic = (<HTMLInputElement>document.getElementById("subTopic")).value;
+    let user = (<HTMLInputElement>document.getElementById("userName")).value;
+    //TODO:see comment in line 44,45
+    comm.addResponder(user, onRequest);
     let result = comm.subscribeAsync(topic, onReceive);
     result.then((res: IResponse) => {
         console.log(res);
@@ -84,19 +94,11 @@ document.getElementById("unsubButton").addEventListener("click", function () {
 
 //TODO: fix this like sub/unsub later
 document.getElementById("requestButton").addEventListener("click", function () {
-   // let topic = (<HTMLInputElement>document.getElementById("additionalData")).value;
-
     let additionalData = (<HTMLInputElement>document.getElementById("additionalData")).value;
     let responder = (<HTMLInputElement>document.getElementById("responder")).value;
-
-    
-    //comm.queryAsync(responder, additionalData);
-    //comm.addResponder(responder, onRequest);
-    
     let result = comm.queryAsync(responder, additionalData);
 
     result.then((res: IResponse) => {
-        //test
         const messageReceived: IResponse = <IResponse>res;
         console.log(messageReceived);
         let li = document.createElement("li");

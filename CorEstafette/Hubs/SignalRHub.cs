@@ -3,15 +3,17 @@ using System.Threading.Tasks;
 using SignalRCommunicator;
 using System;
 using System.Collections.Concurrent;
+using System.Diagnostics;
 
 //Hub manages connection, group, messaging
 namespace CorEstafette.Hubs
 {
     public class SignalRHub : Hub
     {
-        private static ConcurrentDictionary<string, string> ConnectedClients = new ConcurrentDictionary<string, string>();
-        private static ConcurrentDictionary<string, TaskCompletionSource<IResponse>> responsesByCorrelationIds = new ConcurrentDictionary<string, TaskCompletionSource<IResponse>>();
-        private static ConcurrentDictionary<string, string> RespondersList = new ConcurrentDictionary<string, string>();
+
+        private static readonly ConcurrentDictionary<string, string> ConnectedClients = new ConcurrentDictionary<string, string>();
+        private static readonly ConcurrentDictionary<string, TaskCompletionSource<IResponse>> responsesByCorrelationIds = new ConcurrentDictionary<string, TaskCompletionSource<IResponse>>();
+        private static readonly ConcurrentDictionary<string, string> RespondersList = new ConcurrentDictionary<string, string>();
 
         public async Task<IResponse> ConnectAsync(string userName)
         {
@@ -20,27 +22,23 @@ namespace CorEstafette.Hubs
             return res;
         }
 
-        public IResponse VerifyUserRegistered(string userName)
+        public IResponse AddResponder(string userName)
         {
-            bool success = ConnectedClients.ContainsKey(userName);
-            if (success)
+            ConnectedClients.TryGetValue(userName, out string connId);
+            if (connId != null)
             {
-                success = RespondersList.TryAdd(userName, Context.ConnectionId);
-                return new Response(null, $"{userName} was {(success ? "successfully added to" : "already in")} the Responser's list", success);
+                bool success = RespondersList.TryAdd(userName, connId);
+                return new Response(null, $"{userName} was {(success ? "successfully added to" : "already in")} the Responser's list", true);
             }
-            RespondersList.TryRemove(userName, out var _);
-            return new Response(null, $"{userName} is not registered on the service.", success);
+            
+            return new Response(null, $"{userName} is not registered on the service.", false);
         }
 
-        
-        public IResponse VerifyUserInResponserList(string userName)
+        internal IResponse VerifyResponderIsInList(string userName)
+
         {
             bool success = RespondersList.ContainsKey(userName);
-            // Check if still connected
-            if (success)
-                return VerifyUserRegistered(userName);
-
-            return new Response(null, $"{userName} is not in the responder's list.", success);
+            return new Response(null, $"{userName} is {(success ? "" : "not" )} in the responder's list.", success);
         }
 
         //publish message to a particular topic
@@ -69,6 +67,10 @@ namespace CorEstafette.Hubs
 
         public async Task<IResponse> QueryAsync(Request request)
         {
+            
+            if(!VerifyResponderIsInList(request.Responder).Success)
+                return new Response(false, request.CorrelationId, null, $"Request failed, {request.Responder} is not in the Responder list.", request.Sender, DateTime.Now);
+
             responsesByCorrelationIds[request.CorrelationId] = new TaskCompletionSource<IResponse>();
 
             await Clients.Client(ConnectedClients[request.Responder]).SendAsync("OnQuery", request);
@@ -86,6 +88,8 @@ namespace CorEstafette.Hubs
 
         public void RespondQueryAsync(Response response)
         {
+            Debug.WriteLine(response.CorrelationId);
+            Debug.WriteLine(responsesByCorrelationIds[response.CorrelationId]);
             responsesByCorrelationIds[response.CorrelationId].TrySetResult(response);
         }
 
@@ -99,8 +103,11 @@ namespace CorEstafette.Hubs
             }
 
             ConnectedClients.TryRemove(userName, out _);
+            RespondersList.TryRemove(userName, out _);
             return base.OnDisconnectedAsync(exception);
         }
     }
 
 }
+
+
