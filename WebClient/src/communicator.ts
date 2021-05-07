@@ -128,12 +128,12 @@ export class Communicator implements ICommunicator {
             let timeoutTask = this.timeoutAsync();
 
             //wait for one of the tasks to settle, and handle resolved and rejected cases separately
-            let taskResult = await Promise.race([serviceTask, timeoutTask]).then((res) => { return res; },
+            let taskResult : IResponse = await Promise.race([serviceTask, timeoutTask]).then((res : IResponse) => { return res; },
                 (rej: any) => {
                     if (rej === "timeout") {
                         return new Response(correlationID, "timeout on subscription", this.userId, topic, false);
                     } else {
-                        return new Response(correlationID, "service rejected the request", this.userId, topic, false);
+                        return new Response(correlationID, "service rejected the subscribe request", this.userId, topic, false);
                     }
             });
 
@@ -169,30 +169,41 @@ export class Communicator implements ICommunicator {
 
             let correlationID = Guid.create().toString();
             let messageToSend = new Message(correlationID, "", this.userId, topic);
+
             let serviceTask = this.connection.invoke("UnsubscribeTopicAsync", messageToSend);
-            //set timeout
             let timeoutTask = this.timeoutAsync();
-            //wait for one of the tasks to settle
-            let taskResult = await Promise.race([serviceTask, timeoutTask]);
-            //TODO: handle reject later
-            if (taskResult.Success===true) {
+
+            //wait for one of the tasks to settle, and handle resolved and rejected cases separately
+            let taskResult: IResponse = await Promise.race([serviceTask, timeoutTask]).then((res: IResponse) => { return res; },
+                (rej: any) => {
+                    if (rej === "timeout") {
+                        return new Response(correlationID, "timeout on unsubscription", this.userId, topic, false);
+                    } else {
+                        return new Response(correlationID, "service rejected the unsubscribe request", this.userId, topic, false);
+                    }
+                });
+
+            if (taskResult.Success === true) {
+
                 console.log("unsub success");//test
+
                 //remove from dictionary
                 this.callbacksByTopics.delete(topic);
                 console.log(this.callbacksByTopics);//test
+
+                return taskResult; //auto wrapped in a resolved promise
+
+            } else {
+
+                console.log("sub failed");
+                throw taskResult;//auto wrapped in a rejected promise
+
             }
-
-            //test
-            //console.log("print the promise and response:");
-            //console.log(serviceTask);
-            //console.log(timeoutTask);
-            //console.log(taskResult);
-
-            return taskResult;
         }
     }
   
-    
+
+   //TODO: change the response promise handler later like sub/unsub
    async queryAsync(responder: string, additionalData: string) : Promise<IResponse> {
  
        //this.callbacksByResponder.set(responder, respondCallback);
@@ -223,8 +234,28 @@ export class Communicator implements ICommunicator {
     async disconnectAsync(): Promise<IResponse> {
         let serviceTask = this.connection.stop();
         let timeoutTask = this.timeoutAsync();
-        let taskResult = await Promise.race([serviceTask, timeoutTask]);
-        return taskResult;
+        //wait for one of the tasks to settle, and handle resolved and rejected cases separately
+        let taskResult: IResponse = await Promise.race([serviceTask, timeoutTask]).then(
+            (res: void) => {
+                return new Response(null, "disconnected from service", this.userId, "", true);
+            },
+            (rej: void) => {
+                if (rej === "timeout") {
+                    return new Response(null, "timeout on disconnection", this.userId, "", false);
+                } else {
+                    return new Response(null, "service rejected the disconnect request", this.userId, "", false);
+                }
+            });
+
+        if (taskResult.Success === true) {
+
+            return taskResult; //auto wrapped in a resolved promise
+
+        } else {
+
+            throw taskResult;//auto wrapped in a rejected promise
+
+        }
     }
 
 }
