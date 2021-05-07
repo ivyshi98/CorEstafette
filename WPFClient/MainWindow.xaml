@@ -5,7 +5,7 @@
         xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
         xmlns:local="clr-namespace:WPFClient"
         mc:Ignorable="d"
-        Title="CorEstafette -- Client WPF" Width="600" Height="561">
+        Title="CorEstafette -- Client WPF" Width="600" Height="610">
     <Grid Background="Cornsilk">
 
         <StackPanel Grid.ColumnSpan="2">
@@ -17,16 +17,16 @@
                     </StackPanel>
                     <StackPanel Orientation="Horizontal">
                         <Label Content="Topic: " Width="100" />
-                        <TextBox x:Name="TopicText" Text="{Binding Topic}" Margin="5,5,5,0" Width="460" Height="17.96"/>
+                        <TextBox x:Name="TopicText" Text="{Binding Topic}" Margin="5,5,5,0" Width="445" Height="17.96"/>
                     </StackPanel>
                     <StackPanel Orientation="Horizontal">
                         <Label Content="Message: " Width="100" />
-                        <TextBox x:Name="ContentText" Text="{Binding Content}" Margin="5,5,5,0" Width="460" Height="17.96"/>
+                        <TextBox x:Name="ContentText" Text="{Binding Content}" Margin="5,5,5,0" Width="445" Height="17.96"/>
                     </StackPanel>
                     <StackPanel Orientation="Horizontal">
                         <Button Content="Subscribe" Command="{Binding SubscribeCommand}" HorizontalAlignment="Center" Margin="105,5,0,0" Width="95"/>
-                        <Button Content="Unsubscribe" Command="{Binding UnsubscribeCommand}" HorizontalAlignment="Center" Margin="87,5,0,0" Width="95"/>
-                        <Button Content="Publish Message" Command="{Binding PublishMessage}" Margin="88,5,0,0" HorizontalAlignment="Center" Width="95"/>
+                        <Button Content="Unsubscribe" Command="{Binding UnsubscribeCommand}" HorizontalAlignment="Center" Margin="80,5,0,0" Width="95"/>
+                        <Button Content="Publish Message" Command="{Binding PublishMessage}" Margin="80,5,0,0" HorizontalAlignment="Center" Width="95"/>
                     </StackPanel>
                 </StackPanel>
             </GroupBox>
@@ -34,15 +34,15 @@
                 <StackPanel Margin="5,5,5,5">
                     <StackPanel Orientation="Horizontal">
                         <Label Content="Responder: " Width="100" />
-                        <TextBox x:Name="ResponderText" Text="{Binding Responder}" Margin="5,5,5,0" Width="460" Height="17.96"/>
+                        <TextBox x:Name="ResponderText" Text="{Binding Responder}" Margin="5,5,5,0" Width="445" Height="17.96"/>
                     </StackPanel>
                     <StackPanel Orientation="Horizontal">
                         <Label Content="Additional Data: " Width="100" />
-                        <TextBox x:Name="AdditionalDataText" Text="{Binding AdditionalData}" Margin="5,5,5,0" Width="460" Height="17.96"/>
+                        <TextBox x:Name="AdditionalDataText" Text="{Binding AdditionalData}" Margin="5,5,5,0" Width="445" Height="17.96"/>
                     </StackPanel>
                     <StackPanel Orientation="Horizontal">
                         <Button Content="Add Responder" Command="{Binding AddResponderCommand}" HorizontalAlignment="Center" Margin="105,5,0,0" Width="95"/>
-                        <Button Content="Send Request" Command="{Binding SendRequestCommand}" HorizontalAlignment="Center" Margin="270,5,0,0" Width="95"/>
+                        <Button Content="Send Request" Command="{Binding SendRequestCommand}" HorizontalAlignment="Center" Margin="270,5,0,0" Width="80"/>
                     </StackPanel>
                 </StackPanel>
             </GroupBox>

@@ -1,5 +1,6 @@
 ﻿using System;
 using System.Collections.Generic;
+using System.Diagnostics;
 using System.Threading.Tasks;
 using Microsoft.AspNetCore.SignalR.Client;
 
@@ -21,15 +22,17 @@ namespace SignalRCommunicator
                 .WithUrl("https://localhost:44392/signalrhub")
                 .Build();
 
-            _ = Task.Run(async () => { await connection.StartAsync(); });
+            _ = Task.Run(async () => { 
+                await connection.StartAsync();
+                await connection.InvokeAsync<Response>("ConnectAsync", UserId);
+            });
             connection.Closed += async (error) =>
             {
                 await Task.Delay(new Random().Next(0, 5) * 1000);
                 await connection.StartAsync();
+                await connection.InvokeAsync<Response>("ConnectAsync", UserId);
             };
 
-            ConnectAsync();
- 
             connection.On<Message>(nameof(OnPublish), OnPublish);
             connection.On<Request>(nameof(OnQuery), OnQuery);
         }
@@ -40,14 +43,15 @@ namespace SignalRCommunicator
 
         private async Task<Object> OnQuery(IRequest request)
         {
+            var tmp = await callBackByResponder[request.Responder](request);
+
+            IResponse response = new Response(true, request.CorrelationId, null, "Well Hello " + request.Sender, request.Sender, request.Timestamp);
+            var result = await connection.InvokeAsync<Response>("RespondQueryAsync", response);
+            //var tmp = callBackByResponder[request.Responder];
             return null;
+
         }
 
-        private async void ConnectAsync()
-        {
-            var response = await connection.InvokeAsync<Response>("ConnectAsync", UserId);
-        }
-        
         public async Task<IResponse> SubscribeAsync(string topic, Func<string, Task> callBack)
         {
             if (callBackTopics.ContainsKey(topic))
