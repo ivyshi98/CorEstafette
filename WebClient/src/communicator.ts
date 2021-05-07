@@ -185,9 +185,9 @@ export class Communicator implements ICommunicator {
 
         //TODO: delete this after hub methods are updated
 
-       let verifyResponder: IResponse = await this.connection.invoke("VerifyResponderIsInList", responder);
-       console.log(verifyResponder.Success);
-       if (verifyResponder.Success) {
+       //let verifyResponder: IResponse = await this.connection.invoke("VerifyResponderIsInList", responder);
+       //console.log(verifyResponder.Success);
+       //if (verifyResponder.Success) {
            let correlationID = Guid.create().toString();
            let requestToSend = new Request(correlationID, additionalData, this.userId, null, responder);
            console.log(requestToSend);
@@ -199,9 +199,8 @@ export class Communicator implements ICommunicator {
            let taskResult = await Promise.race([serviceTask, timeoutTask]);
            console.log(taskResult);
            return taskResult;
-       }
-
-       return verifyResponder;
+      // }
+      //return verifyResponder;
     }
 
 
