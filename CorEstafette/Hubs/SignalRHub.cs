@@ -3,6 +3,7 @@ using System.Threading.Tasks;
 using SignalRCommunicator;
 using System;
 using System.Collections.Concurrent;
+using System.Diagnostics;
 
 //Hub manages connection, group, messaging
 namespace CorEstafette.Hubs
@@ -37,6 +38,7 @@ namespace CorEstafette.Hubs
             bool success = RespondersList.ContainsKey(userName);
             return new Response(null, $"{userName} is {(success ? "" : "not" )} in the responder's list.", success);
         }
+
         //publish message to a particular topic
         public async Task PublishAsync(Message message)
         {
@@ -83,6 +85,8 @@ namespace CorEstafette.Hubs
 
         public void RespondQueryAsync(Response response)
         {
+            Debug.WriteLine(response.CorrelationId);
+            Debug.WriteLine(responsesByCorrelationIds[response.CorrelationId]);
             responsesByCorrelationIds[response.CorrelationId].TrySetResult(response);
         }
 
@@ -102,3 +106,5 @@ namespace CorEstafette.Hubs
     }
 
 }
+
+

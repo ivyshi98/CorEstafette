@@ -2,6 +2,6 @@
 
 export interface IRequest extends IMessage {
 
-    Destination: string;
+    Responder: string;
 }
 
