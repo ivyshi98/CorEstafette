@@ -31,7 +31,7 @@ export class Communicator implements ICommunicator {
     }
 
     //initialize the connection and start it; throw an exception if connection fails
-    private async establishConnection(url: string, connectionHandler: (response: IResponse)=> any) {
+    private async establishConnection(url: string) {
 
         this.connection = new signalR.HubConnectionBuilder().withUrl(url).build();
 
@@ -62,8 +62,8 @@ export class Communicator implements ICommunicator {
         return connectionResult;
     }
 
-    constructor(user: string, connectCallback: (response: IResponse) => any) {
-        this.connected = this.establishConnection("https://localhost:5001/signalRhub", connectCallback);//TODO: change this url later
+    constructor(user: string) {
+        this.connected = this.establishConnection("https://localhost:5001/signalRhub");//TODO: change this url later
 
         this.callbacksByTopics = new Map();
         this.callbacksByResponder = new Map();

@@ -6,15 +6,6 @@ import { ICommunicator } from "./ICommunicator";
 
 let comm: ICommunicator;
 
-//callback for receiving connection feedback
-let onConnect = function (response: IResponse) {
-    console.log(onConnect);
-    let msg = response.Content.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
-    let encodedMsg = "<div class='message'>" + msg + "</div>"
-    let li = document.createElement("li");
-    li.innerHTML = msg;//TODO: fix later
-    document.getElementById("messagesList").appendChild(li);
-}
 
 let onReceive = function (message: IMessage) {
     let msg = message.Content.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
@@ -39,12 +30,24 @@ let onRequest = function (request: IRequest): Promise<any> {
 
 document.getElementById("connectButton").addEventListener("click", function () {
     let user = (<HTMLInputElement>document.getElementById("userName")).value;
-    comm = new Communicator(user, onConnect);
+    comm = new Communicator(user);
 
     //TODO:Need to wait until connection is on to addResponder
     //Right now calling ti in subscribe for a temp workaround
     
-    comm.getConnectionState().then((res: any) => {
+    comm.getConnectionState().then((response: IResponse) => {
+
+        let msg = response.Content.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
+        let li = document.createElement("li");
+        li.innerHTML = msg;
+        document.getElementById("messagesList").appendChild(li);
+        comm.addResponder(user, onRequest);
+
+    }).catch((err: IResponse) => {
+        let msg = err.Content.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
+        let li = document.createElement("li");
+        li.innerHTML = msg;
+        document.getElementById("messagesList").appendChild(li);
         comm.addResponder(user, onRequest);
     });
 
