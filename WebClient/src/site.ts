@@ -43,7 +43,10 @@ document.getElementById("connectButton").addEventListener("click", function () {
 
     //TODO:Need to wait until connection is on to addResponder
     //Right now calling ti in subscribe for a temp workaround
-    //comm.addResponder(user, onRequest);
+    
+    comm.getConnectionState().then((res: any) => {
+        comm.addResponder(user, onRequest);
+    });
 
 });
 
@@ -52,7 +55,8 @@ document.getElementById("subButton").addEventListener("click", function () {
     let topic = (<HTMLInputElement>document.getElementById("subTopic")).value;
     let user = (<HTMLInputElement>document.getElementById("userName")).value;
     //TODO:see comment in line 44,45
-    comm.addResponder(user, onRequest);
+    //comm.addResponder(user, onRequest);
+
     let result = comm.subscribeAsync(topic, onReceive);
     result.then((res: IResponse) => {
         console.log(res);
