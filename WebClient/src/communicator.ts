@@ -87,9 +87,21 @@ export class Communicator implements ICommunicator {
         let resultTask = respondCallback(requestReceived);
         let timeoutTask = this.timeoutAsync(2000);
         let taskResponse = await Promise.race([resultTask, timeoutTask]).then((res: any) => {
-            let responseToSend = new Response(requestReceived.CorrelationId, res, requestReceived.Sender, "", true);
-            this.connection.invoke("RespondQueryAsync", responseToSend);
-        });
+                let responseToSend = new Response(requestReceived.CorrelationId, res, requestReceived.Sender, "", true);
+                this.connection.invoke("RespondQueryAsync", responseToSend);
+            },
+            (rej: any) => {
+                if (rej === "timeout") {
+                    let responseToSend = new Response(requestReceived.CorrelationId, "Timed out", requestReceived.Sender, "", false);
+                    this.connection.invoke("RespondQueryAsync", responseToSend);
+                } else {
+
+                    //return new Response(correlationID, "service rejected the subscribe request", this.userId, topic, false);
+                }
+            });
+
+
+      
     }
 
     public getConnectionState() {
