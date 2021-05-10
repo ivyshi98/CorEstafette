@@ -7,15 +7,15 @@ export class Request implements IRequest {
     private sender: string;
     private topic: string;
     private timeStamp: Date;
-    private destination: string;
+    private responder: string;
 
-    constructor(id: string, content: string, sender: string, topic: string, destination: string) {
+    constructor(id: string, content: string, sender: string, topic: string, responder: string) {
         this.correlationId = id;
         this.content = content;
         this.sender = sender;
         this.topic = topic;
         this.timeStamp = new Date();
-        this.destination = destination;
+        this.responder = responder;
     }
 
     public get Topic() { return this.topic; }
@@ -33,7 +33,7 @@ export class Request implements IRequest {
     get TimeStamp() { return this.timeStamp; }
     set TimeStamp(value: Date) { this.timeStamp = value; }
 
-    get Destination() { return this.destination; }
-    set Destination(value: string) { this.destination = value; }
+    get Responder() { return this.responder; }
+    set Responder(value: string) { this.responder = value; }
 
 }

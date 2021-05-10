@@ -31,7 +31,6 @@ namespace CorEstafette
             {
                 options.PayloadSerializerOptions.PropertyNamingPolicy = null;//configure signalR hubs
             });
-            
             services.AddSignalR(HubOptions =>
             {
                 HubOptions.MaximumParallelInvocationsPerClient = 5;

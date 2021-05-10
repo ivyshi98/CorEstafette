@@ -12,17 +12,16 @@ import { Request } from "./Request";
 
 export class Communicator implements ICommunicator {
 
-  
-    private connection: any;
-    private callbacksByTopics: Map<string, (message: IMessage) => any>;
     private userId: string;
-    private callbacksByResponder: Map<string, (request: IRequest) => any>;
+    private connection: any;
+    private connected: Promise<IResponse>;
+    private callbacksByTopics: Map<string, (message: IMessage) => any>;
+    private callbacksByResponder: Map<string, (request: IRequest) => Promise<any> >;
 
     //construct and return a timeout promise which will reject after 2 seconds
-    private timeoutAsync(ms: number = 2000, correlationId : string = "", content : string = "timeout", sender : string = "", topic : string = "") : Promise<IResponse> {
-        let timeoutResponse = new Response(correlationId, content, sender, topic, false);
+    private timeoutAsync(ms: number = 2000) : Promise<string> {
         return new Promise((resolve, reject) => setTimeout(() => {
-            reject(timeoutResponse)
+            reject("timeout");
         }, ms));
     }
 
@@ -32,115 +31,121 @@ export class Communicator implements ICommunicator {
     }
 
     //initialize the connection and start it; throw an exception if connection fails
-    private establishConnection(url: string, connectionHandler: (response: IResponse)=> any) {
+    private async establishConnection(url: string) {
 
         this.connection = new signalR.HubConnectionBuilder().withUrl(url).build();
 
-        this.connection.start().then(
+        let connectionResult = this.connection.start().then(
 
-            (resolve: any) => {
+            (connect: any) => {//connected
+
                 let registerTask = this.connection.invoke("ConnectAsync", this.userId);
                 let timeoutTask = this.timeoutAsync();
-                return Promise.race([registerTask, timeoutTask]);
-            },
-            (reject: any): void => {
-                throw new Response("", "connection rejected", "", "", false);
+                return Promise.race([registerTask, timeoutTask]);//return a promise to be handled by the next then
+            }
 
-        }).then(
+        ).then(
 
-            (resolve: IResponse): void => {
-                console.log(resolve);
-                if (resolve.Success === true) {
-                    connectionHandler(resolve);
-                    console.log("successfully registered");//TODO: notify user?
-                } else {//duplicate user name, need to stop connection and throw
-                    this.connection.stop();
-                    throw resolve;
+            (register: IResponse): IResponse => {//registered
+
+                if (!register.Success) {
+                    this.connection.stop();//TODO: this is also an async method; handle this here will cause another callback hell?
                 }
-            },
-            (reject: any): void => {//reject could be either response or string
-                throw new Response("", "failed to register the connection", "", "", false);
+                return register;
+
+            }
+
+        ).catch ((err : any) => {
+            let correlationID = Guid.create().toString();
+            throw new Response(correlationID, "failed to register the connection", "", "", false);
         });
+        return connectionResult;
     }
 
-    constructor(user: string, connectCallback: (response: IResponse)=> any) {
-        this.establishConnection("https://localhost:5001/signalRhub", connectCallback);
+    constructor(user: string) {
+        this.connected = this.establishConnection("https://localhost:5001/signalRhub");//TODO: change this url later
 
         this.callbacksByTopics = new Map();
         this.callbacksByResponder = new Map();
 
-        //generate unique user id
-        //this.userId = "User" + Math.floor(Math.random() * (100 - 1 + 1)) + 1;
-
         this.userId = user;
-        console.log(this.userId);
-
         //invoke the proper callback when the hub sends topic-based message to the client
+
         this.registerCallback("onPublish", (messageReceived: IMessage) => {
             let topicCallback = this.callbacksByTopics.get(messageReceived.Topic);
             topicCallback(messageReceived);//invoke callback
         });
         
         this.registerCallback("OnQuery", (requestReceived: IRequest) => {
-            console.log(requestReceived);
-            console.log(this.callbacksByResponder);
+            console.log("Onquery" + requestReceived);
 
-            let respondCallback = this.callbacksByResponder.get(requestReceived.Destination);
-            //let respondCallback = this.callbacksByResponder.get("user");
+            let respondCallback = this.callbacksByResponder.get(requestReceived.Responder);
+
             let result = respondCallback(requestReceived);
-            console.log(result);
-
-         
-            let responseToSend = new Response(requestReceived.CorrelationId, result, requestReceived.Sender, "", true);
-            console.log(responseToSend);
-            this.connection.invoke("RespondQueryAsync", responseToSend);
+            result.then((res: any) => {
+                console.log(res);
+                let responseToSend = new Response(requestReceived.CorrelationId, res, requestReceived.Sender, "", true);
+                console.log(responseToSend);
+                this.connection.invoke("RespondQueryAsync", responseToSend);
+            });
         })
     }
 
+    public getConnectionState() {
+        return this.connected;
+    }
 
     publish(topic: string, message: string) {
-        console.log("Client called publish method");//test
+
         let correlationID = Guid.create().toString();
         let messageToSend = new Message(correlationID, message, this.userId, topic);
         console.log(messageToSend)
-        this.connection.invoke("PublishAsync", messageToSend);
+        this.connection.invoke("PublishAsync", messageToSend);//TODO: need a response if service is down
+
     }
 
-
     async subscribeAsync(topic: string, topicCallback: (message: IMessage) => any): Promise<IResponse>{
-        console.log("Client called subscribe method");//test
 
         if (this.callbacksByTopics.has(topic)) {//cannot subscribe twice
-            let duplicateSubResponse = new Response("", "cannot subscribe to the same topic twice", this.userId, topic, false);
-            return new Promise<IResponse>((resolve, reject) => {
-                reject(duplicateSubResponse);
-            });
+
+            let correlationID = Guid.create().toString();
+            let duplicateSubResponse = new Response(correlationID, "cannot subscribe to the same topic multiple times", this.userId, topic, false);
+            throw duplicateSubResponse;
 
         } else {
 
             let correlationID = Guid.create().toString();
             let messageToSend = new Message(correlationID, "", this.userId, topic);
 
+            //set tasks
             let serviceTask = this.connection.invoke("SubscribeTopicAsync", messageToSend);
             let timeoutTask = this.timeoutAsync();
 
-            //wait for one of the tasks to settle
-            let taskResult = await Promise.race([serviceTask, timeoutTask]);
-            if (taskResult.Success === true) {
+            //wait for one of the tasks to settle, and handle resolved and rejected cases separately
+            let taskResponse : IResponse = await Promise.race([serviceTask, timeoutTask]).then((res : IResponse) => { return res; },
+                (rej: any) => {
+                    if (rej === "timeout") {
+                        return new Response(correlationID, "timeout on subscription", this.userId, topic, false);
+                    } else {
+                        return new Response(correlationID, "service rejected the subscribe request", this.userId, topic, false);
+                    }
+            });
+
+            if (taskResponse.Success === true) {
+
                 //add callback function to the dictionary
-                console.log("sub success");//test
+                console.log("sub success");
                 this.callbacksByTopics.set(topic, topicCallback);
                 console.log(this.callbacksByTopics);//test
+                return taskResponse; //auto wrapped in a resolved promise
+
+            } else {
+
+                console.log("sub failed");
+                throw taskResponse;//auto wrapped in a rejected promise
+
             }
-            //test
-            console.log("print the promise and response:");
-            console.log(serviceTask);
-            console.log(timeoutTask);
-            console.log(taskResult);
-
-            return taskResult;
         }
-
     }
 
     async unsubscribeAsync(topic: string): Promise<IResponse>{
@@ -148,72 +153,132 @@ export class Communicator implements ICommunicator {
 
         if (!this.callbacksByTopics.has(topic)) {
 
-            let duplicateUnsubResponse = new Response("", "you need to subscribe before unsubscribing", this.userId, topic, false);
+            let correlationID = Guid.create().toString();
+            let duplicateUnsubResponse = new Response(correlationID, "subscribe to before unsubscribing from this topic", this.userId, topic, false);
             return new Promise<IResponse>((resolve, reject) => {
                 reject(duplicateUnsubResponse);
             });
 
         } else {
+
             let correlationID = Guid.create().toString();
-
             let messageToSend = new Message(correlationID, "", this.userId, topic);
-            let serviceTask = this.connection.invoke("UnsubscribeTopicAsync", messageToSend);
 
-            //set timeout
+            let serviceTask = this.connection.invoke("UnsubscribeTopicAsync", messageToSend);
             let timeoutTask = this.timeoutAsync();
-            //wait for one of the tasks to settle
-            let taskResult = await Promise.race([serviceTask, timeoutTask]);
-            
-            if (taskResult.Success===true) {
+
+            //wait for one of the tasks to settle, and handle resolved and rejected cases separately
+            let taskResponse: IResponse = await Promise.race([serviceTask, timeoutTask]).then((res: IResponse) => { return res; },
+                (rej: any) => {
+                    if (rej === "timeout") {
+                        return new Response(correlationID, "timeout on unsubscription", this.userId, topic, false);
+                    } else {
+                        return new Response(correlationID, "service rejected the unsubscribe request", this.userId, topic, false);
+                    }
+                });
+
+            if (taskResponse.Success === true) {
+
                 console.log("unsub success");//test
+
                 //remove from dictionary
                 this.callbacksByTopics.delete(topic);
                 console.log(this.callbacksByTopics);//test
+
+                return taskResponse; //auto wrapped in a resolved promise
+
+            } else {
+
+                console.log("sub failed");
+                throw taskResponse;//auto wrapped in a rejected promise
+
             }
-
-            //test
-            console.log("print the promise and response:");
-            console.log(serviceTask);
-            console.log(timeoutTask);
-            console.log(taskResult);
-
-            return taskResult;
         }
     }
   
-    
-   async queryAsync(responder: string, additionalData: string) : Promise<IResponse> {
- 
-       //this.callbacksByResponder.set(responder, respondCallback);
-       // console.log("callbacksByResponder");
-       // console.log(this.callbacksByResponder);
-    
+    async queryAsync(responder: string, additionalData: string): Promise<IResponse> {
+
+        //TODO: delete this after hub methods are updated
+
+       //let verifyResponder: IResponse = await this.connection.invoke("VerifyResponderIsInList", responder);
+       //console.log(verifyResponder.Success);
+       //if (verifyResponder.Success) {
+
         let correlationID = Guid.create().toString();
         let requestToSend = new Request(correlationID, additionalData, this.userId, null, responder);
         console.log(requestToSend);
         //let serviceTask = this.connection.invoke("QueryAsync", requestToSend).catch(err => console.log(err));
-        let serviceTask = this.connection.invoke("QueryAsync", requestToSend);
-       let timeoutTask = this.timeoutAsync();
 
-        let taskResult = await Promise.race([serviceTask, timeoutTask]);
-        console.log(taskResult);
-        return taskResult;
+        let serviceTask = this.connection.invoke("QueryAsync", requestToSend);
+        let timeoutTask = this.timeoutAsync();
+
+        let taskResponse: IResponse = await Promise.race([serviceTask, timeoutTask]).then((res: IResponse) => { return res; },
+            (rej: any) => {
+                if (rej === "timeout") {
+                    return new Response(null, "timeout on query", this.userId, "", false);
+                } else {
+                    return new Response(null, "service rejected the query request", this.userId, "", false);
+                }
+            });
+
+        if (taskResponse.Success === true) {
+
+            return taskResponse; //auto wrapped in a resolved promise
+
+        } else {
+
+            throw taskResponse;//auto wrapped in a rejected promise
+
+        }
+
+      // }
+      //return verifyResponder;
     }
 
 
-     //bool AddResponse(string responder, Func<IRequest, object> callback);
-    addResponder(responder : string, respondCallback: (request: IRequest) => string) {
-        if (!this.callbacksByResponder.has(responder)) {
-            this.callbacksByResponder.set(responder, respondCallback);
-            console.log(this.callbacksByResponder);
+
+    async addResponder(responder: string, respondCallback: (request: IRequest) => Promise<any>): Promise<IResponse> {
+        console.log("add responder");
+    
+        let registerTask: IResponse = await this.connection.invoke("AddResponder", responder);
+        console.log("registration");
+        console.log(registerTask);
+        if (registerTask.Success) {
+            console.log("success");
+            if (!this.callbacksByResponder.has(responder)) {
+                this.callbacksByResponder.set(responder, respondCallback);
+                console.log("here");
+                console.log(this.callbacksByResponder);
+            }
         }
+        return registerTask;
     }
 
     async disconnectAsync(): Promise<IResponse> {
         let serviceTask = this.connection.stop();
         let timeoutTask = this.timeoutAsync();
-        let taskResult = await Promise.race([serviceTask, timeoutTask]);
-        return taskResult;
+        //wait for one of the tasks to settle, and handle resolved and rejected cases separately
+        let taskResponse: IResponse = await Promise.race([serviceTask, timeoutTask]).then(
+            (res: void) => {
+                return new Response(null, "disconnected from service", this.userId, "", true);
+            },
+            (rej: any) => {
+                if (rej === "timeout") {
+                    return new Response(null, "timeout on disconnection", this.userId, "", false);
+                } else {
+                    return new Response(null, "service rejected the disconnect request", this.userId, "", false);
+                }
+            });
+
+        if (taskResponse.Success === true) {
+
+            return taskResponse; //auto wrapped in a resolved promise
+
+        } else {
+
+            throw taskResponse;//auto wrapped in a rejected promise
+
+        }
     }
 
 }

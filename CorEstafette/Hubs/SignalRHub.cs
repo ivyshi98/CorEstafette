@@ -3,12 +3,14 @@ using System.Threading.Tasks;
 using SignalRCommunicator;
 using System;
 using System.Collections.Concurrent;
+using System.Diagnostics;
 
 //Hub manages connection, group, messaging
 namespace CorEstafette.Hubs
 {
     public class SignalRHub : Hub
     {
+
         private static readonly ConcurrentDictionary<string, string> ConnectedClients = new ConcurrentDictionary<string, string>();
         private static readonly ConcurrentDictionary<string, TaskCompletionSource<IResponse>> responsesByCorrelationIds = new ConcurrentDictionary<string, TaskCompletionSource<IResponse>>();
         private static readonly ConcurrentDictionary<string, string> RespondersList = new ConcurrentDictionary<string, string>();
@@ -16,7 +18,7 @@ namespace CorEstafette.Hubs
         public async Task<IResponse> ConnectAsync(string userName)
         {
             bool success = ConnectedClients.TryAdd(userName, Context.ConnectionId);
-            IResponse res = new Response("", $"{userName} {(success ? "successfully registered" : "failed to register")} to the service", success);
+            IResponse res = new Response("", $"{userName} {(success ? "successfully registered to the service" : "failed to register due to duplicate user name")}", success);
             return res;
         }
 
@@ -33,10 +35,12 @@ namespace CorEstafette.Hubs
         }
 
         internal IResponse VerifyResponderIsInList(string userName)
+
         {
             bool success = RespondersList.ContainsKey(userName);
             return new Response(null, $"{userName} is {(success ? "" : "not" )} in the responder's list.", success);
         }
+
         //publish message to a particular topic
         public async Task PublishAsync(Message message)
         {
@@ -46,6 +50,7 @@ namespace CorEstafette.Hubs
         //method for client to subscribe for a topic
         public async Task<IResponse> SubscribeTopicAsync(Message message)
         {
+            //System.Threading.Thread.Sleep(4000);
             await Groups.AddToGroupAsync(Context.ConnectionId, message.Topic);
 
             message.Content = $"{message.Sender} successfully subscribed to topic {message.Topic}";
@@ -102,3 +107,5 @@ namespace CorEstafette.Hubs
     }
 
 }
+
+
