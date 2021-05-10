@@ -3,6 +3,8 @@ import { IMessage } from "./IMessage";
 import { IRequest } from "./IRequest";
 
 export interface ICommunicator {
+
+    getConnectionState: () => Promise<IResponse>;
     publish: (topic: string, message: string) => void;
     subscribeAsync: (topic: string, topicCallback: (message: IMessage) => any) => Promise<IResponse>;
     unsubscribeAsync: (topic: string) => Promise<IResponse>;

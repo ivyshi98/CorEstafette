@@ -14,16 +14,9 @@ export class Communicator implements ICommunicator {
 
     private userId: string;
     private connection: any;
+    private connected: Promise<IResponse>;
     private callbacksByTopics: Map<string, (message: IMessage) => any>;
     private callbacksByResponder: Map<string, (request: IRequest) => Promise<any> >;
-
-    ////construct and return a timeout promise which will reject after 2 seconds
-    //private timeoutAsync(ms: number = 2000, correlationId : string = "", content : string = "timeout", sender : string = "", topic : string = "") : Promise<IResponse> {
-    //    let timeoutResponse = new Response(correlationId, content, sender, topic, false);
-    //    return new Promise((resolve, reject) => setTimeout(() => {
-    //        reject(timeoutResponse)
-    //    }, ms));
-    //}
 
     //construct and return a timeout promise which will reject after 2 seconds
     private timeoutAsync(ms: number = 2000) : Promise<string> {
@@ -38,7 +31,7 @@ export class Communicator implements ICommunicator {
     }
 
     //initialize the connection and start it; throw an exception if connection fails
-    private establishConnection(url: string, connectionHandler: (response: IResponse)=> any) {
+    private async establishConnection(url: string) {
 
         this.connection = new signalR.HubConnectionBuilder().withUrl(url).build();
 
@@ -53,30 +46,29 @@ export class Communicator implements ICommunicator {
 
         ).then(
 
-            (register: IResponse): void => {//registered
+            (register: IResponse): IResponse => {//registered
 
-                if (register.Success === true) {
-                    connectionHandler(register);//invoke handler to notify the client
-                } else {//duplicate user name, need to stop connection and throw the response
+                if (!register.Success) {
                     this.connection.stop();//TODO: this is also an async method; handle this here will cause another callback hell?
-                    connectionHandler(register);
                 }
+                return register;
+
             }
 
         ).catch ((err : any) => {
             let correlationID = Guid.create().toString();
-            connectionHandler(new Response(correlationID, "failed to register the connection", "", "", false));
+            throw new Response(correlationID, "failed to register the connection", "", "", false);
         });
+        return connectionResult;
     }
 
-    constructor(user: string, connectCallback: (response: IResponse)=> any) {
-        this.establishConnection("https://localhost:5001/signalRhub", connectCallback);//TODO: change this url later
+    constructor(user: string) {
+        this.connected = this.establishConnection("https://localhost:5001/signalRhub");//TODO: change this url later
 
         this.callbacksByTopics = new Map();
         this.callbacksByResponder = new Map();
 
         this.userId = user;
-
         //invoke the proper callback when the hub sends topic-based message to the client
 
         this.registerCallback("onPublish", (messageReceived: IMessage) => {
@@ -97,6 +89,10 @@ export class Communicator implements ICommunicator {
                 this.connection.invoke("RespondQueryAsync", responseToSend);
             });
         })
+    }
+
+    public getConnectionState() {
+        return this.connected;
     }
 
     publish(topic: string, message: string) {
