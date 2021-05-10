@@ -19,7 +19,7 @@ export class Communicator implements ICommunicator {
     private callbacksByResponder: Map<string, (request: IRequest) => Promise<any> >;
 
     //construct and return a timeout promise which will reject after 2 seconds
-    private timeoutAsync(ms: number = 2000) : Promise<string> {
+    private timeoutAsync(ms: number = 5000) : Promise<string> {
         return new Promise((resolve, reject) => setTimeout(() => {
             reject("timeout");
         }, ms));
@@ -77,18 +77,28 @@ export class Communicator implements ICommunicator {
         });
         
         this.registerCallback("OnQuery", (requestReceived: IRequest) => {
-            console.log("Onquery" + requestReceived);
+            console.log("OnQuery" + requestReceived);
+            this.onQueryTask(requestReceived);
 
-            let respondCallback = this.callbacksByResponder.get(requestReceived.Responder);
+            //let result = respondCallback(requestReceived);
+            //result.then((res: any) => {
+            //    console.log(res);
+            //    let responseToSend = new Response(requestReceived.CorrelationId, res, requestReceived.Sender, "", true);
+            //    console.log(responseToSend);
+            //    this.connection.invoke("RespondQueryAsync", responseToSend);
+            //});
 
-            let result = respondCallback(requestReceived);
-            result.then((res: any) => {
-                console.log(res);
-                let responseToSend = new Response(requestReceived.CorrelationId, res, requestReceived.Sender, "", true);
-                console.log(responseToSend);
-                this.connection.invoke("RespondQueryAsync", responseToSend);
-            });
         })
+    }
+
+    async onQueryTask(requestReceived: IRequest) {
+        let respondCallback = this.callbacksByResponder.get(requestReceived.Responder);
+        let resultTask = respondCallback(requestReceived);
+        let timeoutTask = this.timeoutAsync(2000);
+        let taskResponse = await Promise.race([resultTask, timeoutTask]).then((res: any) => {
+            let responseToSend = new Response(requestReceived.CorrelationId, res, requestReceived.Sender, "", true);
+            this.connection.invoke("RespondQueryAsync", responseToSend);
+        });
     }
 
     public getConnectionState() {
@@ -198,11 +208,6 @@ export class Communicator implements ICommunicator {
   
     async queryAsync(responder: string, additionalData: string): Promise<IResponse> {
 
-        //TODO: delete this after hub methods are updated
-
-       //let verifyResponder: IResponse = await this.connection.invoke("VerifyResponderIsInList", responder);
-       //console.log(verifyResponder.Success);
-       //if (verifyResponder.Success) {
 
         let correlationID = Guid.create().toString();
         let requestToSend = new Request(correlationID, additionalData, this.userId, null, responder);
@@ -231,27 +236,51 @@ export class Communicator implements ICommunicator {
 
         }
 
-      // }
-      //return verifyResponder;
     }
 
 
 
     async addResponder(responder: string, respondCallback: (request: IRequest) => Promise<any>): Promise<IResponse> {
         console.log("add responder");
-    
-        let registerTask: IResponse = await this.connection.invoke("AddResponder", responder);
-        console.log("registration");
-        console.log(registerTask);
-        if (registerTask.Success) {
-            console.log("success");
+
+        let registerTask: IResponse = this.connection.invoke("AddResponder", responder);
+        let timeoutTask = this.timeoutAsync();
+
+        let taskResponse: IResponse = await Promise.race([registerTask, timeoutTask]).then((res: IResponse) => { return res; },
+            (rej: any) => {
+                if (rej === "timeout") {
+                    return new Response(null, "timeout on query", this.userId, "", false);
+                } else {
+                    return new Response(null, "service rejected the query request", this.userId, "", false);
+                }
+            });
+
+        if (taskResponse.Success === true) {
+
             if (!this.callbacksByResponder.has(responder)) {
                 this.callbacksByResponder.set(responder, respondCallback);
-                console.log("here");
-                console.log(this.callbacksByResponder);
             }
+            return taskResponse; //auto wrapped in a resolved promise
+
+        } else {
+
+            throw taskResponse;//auto wrapped in a rejected promise
+
         }
-        return registerTask;
+
+
+        //let registerTask: IResponse = await this.connection.invoke("AddResponder", responder);
+        //console.log("registration");
+        //console.log(registerTask);
+        //if (registerTask.Success) {
+        //    console.log("success");
+        //    if (!this.callbacksByResponder.has(responder)) {
+        //        this.callbacksByResponder.set(responder, respondCallback);
+        //        console.log("here");
+        //        console.log(this.callbacksByResponder);
+        //    }
+        //}
+        //return registerTask;
     }
 
     async disconnectAsync(): Promise<IResponse> {
