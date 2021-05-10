@@ -1,6 +1,5 @@
 ﻿using System;
 using System.Collections.Generic;
-using System.Diagnostics;
 using System.Threading.Tasks;
 using Microsoft.AspNetCore.SignalR.Client;
 
@@ -41,14 +40,14 @@ namespace SignalRCommunicator
             await callBackTopics[message.Topic]($"{message.Sender} published : {message.Content} on topic {message.Topic}");
         }
 
-        private async Task<Object> OnQuery(IRequest request)
+        private async Task OnQuery(IRequest request)
         {
-            var tmp = await callBackByResponder[request.Responder](request);
+            var tmp = callBackByResponder[request.Responder](request);
+            var timeOutTask = Task.Delay(2000);
+            var completed = await Task.WhenAny(tmp, timeOutTask);
 
-            IResponse response = new Response(true, request.CorrelationId, null, tmp.ToString(), request.Sender, request.Timestamp);
-            await connection.InvokeAsync<Response>("RespondQueryAsync", response);
-            return Task.FromResult(response);
-
+            if (completed == tmp)
+                await connection.InvokeAsync("RespondQueryAsync", new Response(true, request.CorrelationId, "", tmp.Result.ToString(), request.Sender, DateTime.Now));
         }
 
         public async Task<IResponse> SubscribeAsync(string topic, Func<string, Task> callBack)
@@ -58,7 +57,7 @@ namespace SignalRCommunicator
             
             IMessage message = new Message(topic, null, UserId);
             Task<Response> subscribeTask = connection.InvokeAsync<Response>("SubscribeTopicAsync", message);
-            var timeOutTask = Task.Delay(2000);
+            var timeOutTask = Task.Delay(5000);
             var completed = await Task.WhenAny(subscribeTask, timeOutTask);
 
             if (completed != subscribeTask)
@@ -79,7 +78,7 @@ namespace SignalRCommunicator
 
             IMessage message = new Message(topic, null, UserId);
             Task<Response> unsubscribeTask = connection.InvokeAsync<Response>("UnsubscribeTopicAsync", message);
-            var timeOutTask = Task.Delay(2000);
+            var timeOutTask = Task.Delay(5000);
             
             var completed = await Task.WhenAny(unsubscribeTask, timeOutTask);
 
@@ -113,12 +112,9 @@ namespace SignalRCommunicator
         public async Task<IResponse> QueryAsync(string responder, string additionalData)
         {
             IRequest request = new Request(responder, additionalData, UserId);
-            //IResponse response = await connection.InvokeAsync<Response>("VerifyResponderIsInList", responder);
-            /*if (!response.Success)
-                return response;*/
             IResponse response = await connection.InvokeAsync<Response>("QueryAsync", request);
             return response;
-            //return callBackByResponder.TryAdd(responder, callBack);
+            
         }
     }
 }

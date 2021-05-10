@@ -107,7 +107,6 @@ namespace WPFClient
         public Task<Object> OnQuery(IRequest request)
         {
             
-            //Object rep = new Response(request.Sender, null, $"Hello {request.Sender}, {request.Responder} successfully received your request", true);
             Object rep = $"Hello {request.Sender}, {request.Responder} successfully received your request";
             return Task.FromResult(rep);
         }

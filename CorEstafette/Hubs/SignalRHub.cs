@@ -70,7 +70,7 @@ namespace CorEstafette.Hubs
 
             await Clients.Client(ConnectedClients[request.Responder]).SendAsync("OnQuery", request);
             var responseTask = responsesByCorrelationIds[request.CorrelationId].Task;
-            var timeoutTask = Task.Delay(2000);
+            var timeoutTask = Task.Delay(5000);
             var result = await Task.WhenAny(responseTask, timeoutTask);
 
             if (result == responseTask)
@@ -78,15 +78,15 @@ namespace CorEstafette.Hubs
                 responsesByCorrelationIds.TryRemove(request.CorrelationId, out var tcs);
                 return tcs.Task.Result;
             }
-            return new Response(false, request.CorrelationId, null, "Query failed after 2 second time out", request.Sender, DateTime.Now);
+            return new Response(false, request.CorrelationId, null, "Timeout error : Query failed after 5 seconds", request.Sender, DateTime.Now);
         }
 
         public void RespondQueryAsync(Response response)
         {
-            responsesByCorrelationIds[response.CorrelationId].TrySetResult(response);
+            responsesByCorrelationIds[response.CorrelationId].SetResult(response);
         }
 
-        public override Task OnDisconnectedAsync(System.Exception exception)
+        public override Task OnDisconnectedAsync(Exception exception)
         {
             string userName = "";
             foreach (var pair in ConnectedClients)

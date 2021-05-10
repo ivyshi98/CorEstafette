@@ -31,7 +31,12 @@ namespace CorEstafette
             {
                 options.PayloadSerializerOptions.PropertyNamingPolicy = null;//configure signalR hubs
             });
-            services.AddSignalR().AddAzureSignalR("Endpoint = https://isabelletestsignalr.service.signalr.net;AccessKey=71cNhuXYx82+nQ79IkHCWTXtTpcqeSd7Lo/O5zYza8M=;Version=1.0;");//configure signalR
+            
+            services.AddSignalR(HubOptions =>
+            {
+                HubOptions.MaximumParallelInvocationsPerClient = 5;
+
+            }).AddAzureSignalR("Endpoint = https://isabelletestsignalr.service.signalr.net;AccessKey=71cNhuXYx82+nQ79IkHCWTXtTpcqeSd7Lo/O5zYza8M=;Version=1.0;");//configure signalR
         }
 
         // This method gets called by the runtime. Use this method to configure the HTTP request pipeline.
