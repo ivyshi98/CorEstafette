@@ -95,8 +95,8 @@ export class Communicator implements ICommunicator {
                     let responseToSend = new Response(requestReceived.CorrelationId, "Timed out", requestReceived.Sender, "", false);
                     this.connection.invoke("RespondQueryAsync", responseToSend);
                 } else {
-
-                    //return new Response(correlationID, "service rejected the subscribe request", this.userId, topic, false);
+                    let responseToSend = new Response(requestReceived.CorrelationId, "Request Rejected", requestReceived.Sender, "", false);
+                    this.connection.invoke("RespondQueryAsync", responseToSend);
                 }
             });
 
