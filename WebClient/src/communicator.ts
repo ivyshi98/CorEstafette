@@ -79,15 +79,6 @@ export class Communicator implements ICommunicator {
         this.registerCallback("OnQuery", (requestReceived: IRequest) => {
             console.log("OnQuery" + requestReceived);
             this.onQueryTask(requestReceived);
-
-            //let result = respondCallback(requestReceived);
-            //result.then((res: any) => {
-            //    console.log(res);
-            //    let responseToSend = new Response(requestReceived.CorrelationId, res, requestReceived.Sender, "", true);
-            //    console.log(responseToSend);
-            //    this.connection.invoke("RespondQueryAsync", responseToSend);
-            //});
-
         })
     }
 
@@ -106,7 +97,6 @@ export class Communicator implements ICommunicator {
     }
 
     publish(topic: string, message: string) {
-
         let correlationID = Guid.create().toString();
         let messageToSend = new Message(correlationID, message, this.userId, topic);
         console.log(messageToSend)
@@ -267,20 +257,6 @@ export class Communicator implements ICommunicator {
             throw taskResponse;//auto wrapped in a rejected promise
 
         }
-
-
-        //let registerTask: IResponse = await this.connection.invoke("AddResponder", responder);
-        //console.log("registration");
-        //console.log(registerTask);
-        //if (registerTask.Success) {
-        //    console.log("success");
-        //    if (!this.callbacksByResponder.has(responder)) {
-        //        this.callbacksByResponder.set(responder, respondCallback);
-        //        console.log("here");
-        //        console.log(this.callbacksByResponder);
-        //    }
-        //}
-        //return registerTask;
     }
 
     async disconnectAsync(): Promise<IResponse> {
