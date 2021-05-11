@@ -77,7 +77,15 @@ namespace WPFClient
 
             SendRequestCommand = new DelegateCommand(async () =>
             {
-                await communicator.QueryAsync(Responder, AdditionalData);
+                IResponse response = await communicator.QueryAsync(Responder, AdditionalData);
+                if(response == null)
+                {
+                    Messages = $"Request to {Responder} failed.";
+                    OnPropertyChanged(nameof(Messages));
+                    return;
+                }
+                Messages = response.Content + Environment.NewLine + Messages;
+                OnPropertyChanged(nameof(Messages));
             });
 
         }
@@ -98,7 +106,9 @@ namespace WPFClient
 
         public Task<Object> OnQuery(IRequest request)
         {
-            return null;
+            
+            Object rep = $"Hello {request.Sender}, {request.Responder} successfully received your request";
+            return Task.FromResult(rep);
         }
 
         public Task OnSubscribeAsync(string response)

@@ -27,6 +27,7 @@ namespace SignalRCommunicator
         public Response()
         {
             CorrelationId = Guid.NewGuid().ToString();
+            Timestamp = DateTime.Now;
         }
         public Response( 
             bool success,
@@ -41,11 +42,11 @@ namespace SignalRCommunicator
             Topic = topic;
             Content = content;
             Sender = sender;
-            Timestamp = timestamp;
             Success = success;
         }
 
-        public Response(string topic, bool success)
+        public Response(string topic, bool success) 
+            :this()
         {
             Topic = topic;
             Success = success;
